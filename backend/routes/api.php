@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\AgreementController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\PaymentTransactionController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', function () {
@@ -45,6 +46,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Invoice endpoints.
         Route::get('/invoices', [InvoiceController::class, 'index']);
         Route::get('/invoices/{id}', [InvoiceController::class, 'show']);
+
+        // Payment Transaction endpoints.
+        Route::get('/payment-transactions', [PaymentTransactionController::class, 'index']);
+        Route::get('/payment-transactions/{id}', [PaymentTransactionController::class, 'show']);
     });
 
     // Write access: Auditor is intentionally excluded.
@@ -81,5 +86,9 @@ Route::middleware('auth:sanctum')->group(function () {
         // Invoice endpoints.
         Route::post('/invoices', [InvoiceController::class, 'store']);
         Route::put('/invoices/{id}', [InvoiceController::class, 'update']);
+
+        // Payment Transaction endpoints.
+        Route::post('/payment-transactions', [PaymentTransactionController::class, 'store']);
+        Route::put('/payment-transactions/{id}', [PaymentTransactionController::class, 'update']);
     });
 });
