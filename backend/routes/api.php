@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\AgreementController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\PaymentTransactionController;
+use App\Http\Controllers\Api\PaymentVerificationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', function () {
@@ -50,6 +51,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Payment Transaction endpoints.
         Route::get('/payment-transactions', [PaymentTransactionController::class, 'index']);
         Route::get('/payment-transactions/{id}', [PaymentTransactionController::class, 'show']);
+
+        // Payment Verification endpoints.
+        Route::get('/payment-verifications', [PaymentVerificationController::class, 'index']);
+        Route::get('/payment-verifications/{id}', [PaymentVerificationController::class, 'show']);
     });
 
     // Write access: Auditor is intentionally excluded.
@@ -90,5 +95,18 @@ Route::middleware('auth:sanctum')->group(function () {
         // Payment Transaction endpoints.
         Route::post('/payment-transactions', [PaymentTransactionController::class, 'store']);
         Route::put('/payment-transactions/{id}', [PaymentTransactionController::class, 'update']);
+
+        // Payment Verification endpoints.
+        Route::middleware('role:super-admin,finance-manager')->group(function () {
+            Route::post('/payment-verifications/{id}/approve', [
+                PaymentVerificationController::class,
+                'approve',
+            ]);
+
+            Route::post('/payment-verifications/{id}/reject', [
+                PaymentVerificationController::class,
+                'reject',
+            ]);
+        });
     });
 });
