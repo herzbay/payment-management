@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\AgreementController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', function () {
@@ -35,6 +36,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Quotation endpoints.
         Route::get('/quotations', [QuotationController::class, 'index']);
         Route::get('/quotations/{id}', [QuotationController::class, 'show']);
+
+        // Agreement endpoints.
+        Route::get('/agreements', [AgreementController::class, 'index']);
+        Route::get('/agreements/{id}', [AgreementController::class, 'show']);
     });
 
     // Write access: Auditor is intentionally excluded.
@@ -63,5 +68,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/quotations/{id}/submit', [QuotationController::class, 'submit']);
         Route::post('/quotations/{id}/approve', [QuotationController::class, 'approve']);
         Route::post('/quotations/{id}/reject', [QuotationController::class, 'reject']);
+
+        // Agreement endpoints.
+        Route::post('/agreements', [AgreementController::class, 'store']);
+        Route::put('/agreements/{id}', [AgreementController::class, 'update']);
     });
 });
