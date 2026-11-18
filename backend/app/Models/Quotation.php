@@ -73,7 +73,8 @@ class Quotation extends Model
 
     public function terms(): HasMany
     {
-        return $this->hasMany(QuotationTerm::class)->orderBy('sort_order');
+        return $this->hasMany(QuotationTerm::class)
+            ->orderBy('sort_order');
     }
 
     public function approvals(): HasMany
