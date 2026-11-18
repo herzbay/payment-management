@@ -56,4 +56,39 @@ class AuthController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Get authenticated user profile.
+     */
+    public function me(Request $request): JsonResponse
+    {
+        $user = $request->user()->load('role');
+
+        return response()->json([
+            'message' => 'User profile retrieved successfully.',
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'email_verified_at' => $user->email_verified_at,
+                'role' => [
+                    'id' => $user->role->id,
+                    'name' => $user->role->name,
+                    'slug' => $user->role->slug,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Revoke the current access token.
+     */
+    public function logout(Request $request): JsonResponse
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'message' => 'Logout successful.',
+        ]);
+    }
 }
