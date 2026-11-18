@@ -56,9 +56,9 @@ class PaymentTransaction extends Model
         return $this->hasMany(PaymentAllocation::class);
     }
 
-    public function verification(): HasOne
+    public function verifications(): HasMany
     {
-        return $this->hasOne(PaymentVerification::class);
+        return $this->hasMany(PaymentVerification::class);
     }
 
     public function receipt(): HasOne
