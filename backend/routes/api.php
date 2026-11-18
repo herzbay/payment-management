@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\AgreementController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\PaymentTransactionController;
 use App\Http\Controllers\Api\PaymentVerificationController;
+use App\Http\Controllers\Api\ReceiptController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', function () {
@@ -55,6 +56,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Payment Verification endpoints.
         Route::get('/payment-verifications', [PaymentVerificationController::class, 'index']);
         Route::get('/payment-verifications/{id}', [PaymentVerificationController::class, 'show']);
+
+        // Receipt endpoints.
+        Route::get('/receipts', [ReceiptController::class, 'index']);
+        Route::get('/receipts/{id}', [ReceiptController::class, 'show']);
     });
 
     // Write access: Auditor is intentionally excluded.
@@ -108,5 +113,8 @@ Route::middleware('auth:sanctum')->group(function () {
                 'reject',
             ]);
         });
+
+        // Receipt endpoints.
+        Route::post('/receipts', [ReceiptController::class, 'store']);
     });
 });
