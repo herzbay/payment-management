@@ -44,7 +44,6 @@ return new class extends Migration
 
             // Indexes
             $table->index('receipt_date');
-            $table->index('status');
         });
     }
 
