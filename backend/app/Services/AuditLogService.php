@@ -10,6 +10,21 @@ use Illuminate\Support\Facades\Auth;
 class AuditLogService
 {
     /**
+     * Sensitive attributes that must never be stored in audit logs.
+     */
+    private const SENSITIVE_KEYS = [
+        'password',
+        'password_confirmation',
+        'current_password',
+        'token',
+        'access_token',
+        'refresh_token',
+        'api_token',
+        'secret',
+        'client_secret',
+    ];
+
+    /**
      * Record an activity in the audit log.
      */
     public function log(
@@ -31,13 +46,13 @@ class AuditLogService
             'description' => $description,
             'auditable_type' => $auditable?->getMorphClass(),
             'auditable_id' => $auditable?->getKey(),
-            'old_values' => $oldValues,
-            'new_values' => $newValues,
+            'old_values' => $this->sanitize($oldValues),
+            'new_values' => $this->sanitize($newValues),
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
             'url' => $request->fullUrl(),
             'http_method' => $request->method(),
-            'properties' => $properties,
+            'properties' => $this->sanitize($properties) ?? [],
         ]);
     }
 
@@ -99,5 +114,34 @@ class AuditLogService
             oldValues: $model->getAttributes(),
             properties: $properties
         );
+    }
+
+    /**
+     * Remove sensitive values recursively before storing audit data.
+     */
+    private function sanitize(?array $data): ?array
+    {
+        if ($data === null) {
+            return null;
+        }
+
+        $sanitized = [];
+
+        foreach ($data as $key => $value) {
+            if (
+                is_string($key)
+                && in_array(strtolower($key), self::SENSITIVE_KEYS, true)
+            ) {
+                continue;
+            }
+
+            if (is_array($value)) {
+                $value = $this->sanitize($value);
+            }
+
+            $sanitized[$key] = $value;
+        }
+
+        return $sanitized;
     }
 }
