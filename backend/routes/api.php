@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\QuotationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', function () {
@@ -30,6 +31,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Service endpoints.
         Route::get('/services', [ServiceController::class, 'index']);
         Route::get('/services/{id}', [ServiceController::class, 'show']);
+
+        // Quotation endpoints.
+        Route::get('/quotations', [QuotationController::class, 'index']);
+        Route::get('/quotations/{id}', [QuotationController::class, 'show']);
     });
 
     // Write access: Auditor is intentionally excluded.
@@ -51,5 +56,12 @@ Route::middleware('auth:sanctum')->group(function () {
             ServiceController::class,
             'updateStatus',
         ]);
+
+        // Quotation endpoints.
+        Route::post('/quotations', [QuotationController::class, 'store']);
+        Route::put('/quotations/{id}', [QuotationController::class, 'update']);
+        Route::post('/quotations/{id}/submit', [QuotationController::class, 'submit']);
+        Route::post('/quotations/{id}/approve', [QuotationController::class, 'approve']);
+        Route::post('/quotations/{id}/reject', [QuotationController::class, 'reject']);
     });
 });
