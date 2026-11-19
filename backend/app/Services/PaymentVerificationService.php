@@ -13,7 +13,8 @@ use Illuminate\Validation\ValidationException;
 class PaymentVerificationService
 {
     public function __construct(
-        private AuditLogService $auditLogService
+        private AuditLogService $auditLogService,
+        private AccountReceivableService $accountReceivableService,
     ) {}
 
     /**
@@ -304,6 +305,7 @@ class PaymentVerificationService
                     ]
                 );
             }
+            $this->accountReceivableService->syncFromInvoice($invoice);
         }
     }
 
