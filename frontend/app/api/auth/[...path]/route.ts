@@ -13,12 +13,13 @@ interface RouteContext {
 async function proxyRequest(
   request: NextRequest,
   context: RouteContext
-) {
+): Promise<NextResponse> {
   const token = request.cookies.get("pms_token")?.value;
 
   if (!token) {
     return NextResponse.json(
       {
+        success: false,
         message: "Unauthenticated.",
       },
       { status: 401 }
@@ -31,10 +32,11 @@ async function proxyRequest(
     const endpoint = path.map(encodeURIComponent).join("/");
     const queryString = request.nextUrl.search;
 
-    const headers = new Headers({
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
-    });
+    const headers = new Headers();
+
+    headers.set("Accept", "application/json");
+    headers.set("Authorization", `Bearer ${token}`);
+    headers.set("X-Requested-With", "XMLHttpRequest");
 
     const contentType = request.headers.get("content-type");
 
@@ -56,6 +58,7 @@ async function proxyRequest(
         headers,
         body,
         cache: "no-store",
+        redirect: "manual",
       }
     );
 
@@ -65,24 +68,33 @@ async function proxyRequest(
       backendResponse.headers.get("content-type");
 
     if (backendContentType) {
-      responseHeaders.set("Content-Type", backendContentType);
+      responseHeaders.set(
+        "Content-Type",
+        backendContentType
+      );
     }
 
     responseHeaders.set("Cache-Control", "no-store");
 
-    const response = new NextResponse(backendResponse.body, {
-      status: backendResponse.status,
-      headers: responseHeaders,
-    });
+    const response = new NextResponse(
+      backendResponse.body,
+      {
+        status: backendResponse.status,
+        headers: responseHeaders,
+      }
+    );
 
     if (backendResponse.status === 401) {
       response.cookies.delete("pms_token");
     }
 
     return response;
-  } catch {
+  } catch (error) {
+    console.error("API Proxy Error:", error);
+
     return NextResponse.json(
       {
+        success: false,
         message: "Tidak dapat terhubung ke backend Laravel.",
       },
       { status: 502 }

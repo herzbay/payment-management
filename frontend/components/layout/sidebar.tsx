@@ -17,7 +17,10 @@ import {
   Settings,
   X,
   Building2,
+  Users,
+  BriefcaseBusiness,
 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
@@ -33,6 +36,21 @@ const navigationGroups = [
         title: "Dashboard",
         href: "/dashboard",
         icon: LayoutDashboard,
+      },
+    ],
+  },
+  {
+    title: "MASTER DATA",
+    items: [
+      {
+        title: "Customer Management",
+        href: "/customers",
+        icon: Users,
+      },
+      {
+        title: "Service Management",
+        href: "/services",
+        icon: BriefcaseBusiness,
       },
     ],
   },
@@ -126,7 +144,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-[270px] flex-col border-r border-border bg-sidebar transition-transform duration-300",
           "lg:translate-x-0",
-          open ? "translate-x-0" : "-translate-x-full"
+          open ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="flex h-[72px] shrink-0 items-center justify-between border-b border-border px-5">
@@ -138,12 +156,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white">
               <Building2 size={21} />
             </div>
-
             <div>
               <p className="text-sm font-bold tracking-tight text-foreground">
                 Payment Management
               </p>
-
               <p className="mt-0.5 text-[11px] text-muted-foreground">
                 Financial Operations
               </p>
@@ -170,7 +186,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               <div className="space-y-1">
                 {group.items.map((item) => {
                   const Icon = item.icon;
-
                   const active =
                     pathname === item.href ||
                     (item.href !== "/dashboard" &&
@@ -185,7 +200,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                         "flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
                         active
                           ? "bg-sidebar-active text-primary"
-                          : "text-sidebar-foreground hover:bg-secondary"
+                          : "text-sidebar-foreground hover:bg-secondary",
                       )}
                     >
                       <Icon
@@ -193,9 +208,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                         strokeWidth={active ? 2.3 : 1.8}
                         className="shrink-0"
                       />
-
                       <span className="leading-5">{item.title}</span>
-
                       {active && (
                         <span className="ml-auto h-5 w-1 rounded-full bg-primary" />
                       )}
@@ -213,12 +226,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <ShieldCheck size={17} />
               </div>
-
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-foreground">
                   Secure Workspace
                 </p>
-
                 <p className="text-[10px] text-muted-foreground">
                   Internal Company System
                 </p>
@@ -230,10 +241,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             <p className="text-[10px] text-muted-foreground">
               Payment Management
             </p>
-
-            <p className="text-[10px] text-muted-foreground">
-              v1.0.0
-            </p>
+            <p className="text-[10px] text-muted-foreground">v1.0.0</p>
           </div>
         </div>
       </aside>
