@@ -287,10 +287,10 @@ export default function ApprovalQueuePage() {
                 ))
               ) : quotations.length > 0 ? (
                 quotations.map((quotation) => (
-                  <tr
+                <tr
                     key={quotation.id}
                     className="transition-colors hover:bg-muted/30"
-                  >
+                >
                     <td className="px-5 py-4">
                     <Link
                         href={`/approvals/${quotation.id}`}
@@ -298,41 +298,47 @@ export default function ApprovalQueuePage() {
                     >
                         {quotation.quotation_number}
                     </Link>
+
                     <p className="mt-1 max-w-[240px] truncate text-xs text-muted-foreground">
                         {quotation.subject}
                     </p>
+
+                    <Link
+                        href={`/approvals/${quotation.id}`}
+                        className="mt-2 inline-flex text-xs font-medium text-muted-foreground hover:text-primary"
+                    >
+                        Lihat Detail & Keputusan
+                    </Link>
                     </td>
 
                     <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                         <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <span>
-                          {quotation.customer?.company_name || "-"}
-                        </span>
-                      </div>
+                        <span>{quotation.customer?.company_name || "-"}</span>
+                    </div>
                     </td>
 
                     <td className="px-5 py-4">
-                      <div className="flex items-center gap-2 text-muted-foreground">
+                    <div className="flex items-center gap-2 text-muted-foreground">
                         <CalendarDays className="h-4 w-4" />
                         {formatDate(quotation.sent_at || quotation.issue_date)}
-                      </div>
+                    </div>
                     </td>
 
                     <td className="px-5 py-4 text-right font-medium tabular-nums">
-                      {formatCurrency(
+                    {formatCurrency(
                         quotation.total_amount,
                         quotation.currency || "IDR",
-                      )}
+                    )}
                     </td>
 
                     <td className="px-5 py-4 text-center">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
                         <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                         Pending Approval
-                      </span>
+                    </span>
                     </td>
-                  </tr>
+                </tr>
                 ))
               ) : (
                 <tr>
