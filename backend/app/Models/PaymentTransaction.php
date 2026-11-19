@@ -32,6 +32,14 @@ class PaymentTransaction extends Model
         'notes',
     ];
 
+    public function bankStatementLines()
+    {
+        return $this->hasMany(
+            \App\Models\BankStatementLine::class,
+            'payment_transaction_id'
+        );
+    }
+
     protected function casts(): array
     {
         return [

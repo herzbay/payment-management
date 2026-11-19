@@ -69,8 +69,11 @@ class Refund extends Model
         return $this->hasMany(RefundItem::class);
     }
 
-    public function bankStatementLines(): HasMany
+    public function bankStatementLines()
     {
-        return $this->hasMany(BankStatementLine::class);
+        return $this->hasMany(
+            \App\Models\BankStatementLine::class,
+            'refund_id'
+        );
     }
 }
