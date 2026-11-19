@@ -108,40 +108,51 @@ class ServiceController extends Controller
         ?int $serviceId = null,
         bool $isUpdate = false
     ): array {
-        $required = $isUpdate ? 'sometimes|required' : 'required';
-        $nullable = $isUpdate ? 'sometimes|nullable' : 'nullable';
+        $requiredRules = $isUpdate
+            ? ['sometimes', 'required']
+            : ['required'];
+
+        $nullableRules = $isUpdate
+            ? ['sometimes', 'nullable']
+            : ['nullable'];
 
         return [
             'service_code' => [
-                $required,
+                ...$requiredRules,
                 'string',
                 'max:50',
                 Rule::unique('services', 'service_code')->ignore($serviceId),
             ],
+
             'name' => [
-                $required,
+                ...$requiredRules,
                 'string',
                 'max:255',
             ],
+
             'category' => [
-                $nullable,
+                ...$nullableRules,
                 'string',
                 'max:100',
             ],
+
             'description' => [
-                $nullable,
+                ...$nullableRules,
                 'string',
             ],
+
             'default_unit' => [
-                $nullable,
+                ...$nullableRules,
                 'string',
                 'max:50',
             ],
+
             'default_unit_price' => [
-                $nullable,
+                ...$nullableRules,
                 'numeric',
                 'min:0',
             ],
+
             'is_active' => [
                 'sometimes',
                 'boolean',

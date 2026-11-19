@@ -108,67 +108,72 @@ class CustomerController extends Controller
         ?int $customerId = null,
         bool $isUpdate = false
     ): array {
-        $required = $isUpdate ? 'sometimes|required' : 'required';
-        $nullable = $isUpdate ? 'sometimes|nullable' : 'nullable';
+        $required = $isUpdate
+            ? ['sometimes', 'required']
+            : ['required'];
+
+        $nullable = $isUpdate
+            ? ['sometimes', 'nullable']
+            : ['nullable'];
 
         return [
             'customer_code' => [
-                $required,
+                ...$required,
                 'string',
                 'max:50',
                 Rule::unique('customers', 'customer_code')->ignore($customerId),
             ],
             'company_name' => [
-                $required,
+                ...$required,
                 'string',
                 'max:255',
             ],
             'contact_person' => [
-                $nullable,
+                ...$nullable,
                 'string',
                 'max:255',
             ],
             'email' => [
-                $nullable,
+                ...$nullable,
                 'email',
                 'max:255',
             ],
             'phone' => [
-                $nullable,
+                ...$nullable,
                 'string',
                 'max:50',
             ],
             'tax_identification_number' => [
-                $nullable,
+                ...$nullable,
                 'string',
                 'max:100',
             ],
             'billing_address' => [
-                $nullable,
+                ...$nullable,
                 'string',
             ],
             'city' => [
-                $nullable,
+                ...$nullable,
                 'string',
                 'max:100',
             ],
             'province' => [
-                $nullable,
+                ...$nullable,
                 'string',
                 'max:100',
             ],
             'postal_code' => [
-                $nullable,
+                ...$nullable,
                 'string',
                 'max:20',
             ],
             'country' => [
-                $nullable,
+                ...$nullable,
                 'string',
                 'max:100',
             ],
             'notes' => [
-                $nullable,
+                ...$nullable,
                 'string',
             ],
             'is_active' => [

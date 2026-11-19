@@ -5,10 +5,12 @@ import {
   useEffect,
   useState,
   type FormEvent,
+  type ReactNode,
 } from "react";
 import {
   Building2,
   Check,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -18,10 +20,9 @@ import {
   Pencil,
   Phone,
   Plus,
+  Power,
   RefreshCw,
   Search,
-  ToggleLeft,
-  ToggleRight,
   UserRound,
   X,
 } from "lucide-react";
@@ -100,7 +101,7 @@ function Field({
   required = false,
 }: {
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
   required?: boolean;
 }) {
   return (
@@ -154,36 +155,47 @@ export default function CustomersPage() {
     message: string;
   } | null>(null);
 
-  const loadCustomers = useCallback(async () => {
-    setIsLoading(true);
-    setError("");
+  const loadCustomers = useCallback(
+    async (showLoading = true) => {
+      if (showLoading) {
+        setIsLoading(true);
+      }
 
-    try {
-      const result = await customerService.getAll({
-        search: appliedSearch || undefined,
-        is_active:
-          statusFilter === "all"
-            ? undefined
-            : statusFilter === "active",
-        page,
-        per_page: 10,
-      });
+      setError("");
 
-      setCustomers(result.data);
-      setPagination(result.meta);
-    } catch (err) {
-      setError(getErrorMessage(err));
-      setCustomers([]);
-      setPagination(EMPTY_PAGINATION);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [appliedSearch, statusFilter, page]);
+      try {
+        const result = await customerService.getAll({
+          search: appliedSearch || undefined,
+          is_active:
+            statusFilter === "all"
+              ? undefined
+              : statusFilter === "active",
+          page,
+          per_page: 10,
+        });
+
+        setCustomers(result.data);
+        setPagination(result.meta);
+      } catch (err) {
+        setError(getErrorMessage(err));
+
+        if (showLoading) {
+          setCustomers([]);
+          setPagination(EMPTY_PAGINATION);
+        }
+      } finally {
+        if (showLoading) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [appliedSearch, statusFilter, page],
+  );
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void loadCustomers();
-    }, 0);
+      void loadCustomers(true);
+    }, 250);
 
     return () => window.clearTimeout(timeoutId);
   }, [loadCustomers]);
@@ -238,15 +250,38 @@ export default function CustomersPage() {
     }));
   };
 
+  const closeForm = () => {
+    if (isSaving) return;
+
+    setIsFormOpen(false);
+    setEditingCustomer(null);
+    setFormData({ ...EMPTY_FORM });
+    setFormError("");
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    const customerCode = formData.customer_code?.trim() ?? "";
+    const companyName = formData.company_name.trim();
+
+    if (!editingCustomer && !customerCode) {
+      setFormError("Kode customer wajib diisi.");
+      return;
+    }
+
+    if (!companyName) {
+      setFormError("Nama perusahaan wajib diisi.");
+      return;
+    }
+
     setIsSaving(true);
     setFormError("");
 
     const payload: CustomerPayload = {
       ...formData,
-      customer_code: formData.customer_code?.trim() || undefined,
-      company_name: formData.company_name.trim(),
+      customer_code: customerCode || undefined,
+      company_name: companyName,
       contact_person: formData.contact_person?.trim() || null,
       email: formData.email?.trim() || null,
       phone: formData.phone?.trim() || null,
@@ -263,12 +298,14 @@ export default function CustomersPage() {
     try {
       if (editingCustomer) {
         await customerService.update(editingCustomer.id, payload);
+
         setNotice({
           type: "success",
           message: "Data customer berhasil diperbarui.",
         });
       } else {
         await customerService.create(payload);
+
         setNotice({
           type: "success",
           message: "Customer baru berhasil ditambahkan.",
@@ -276,7 +313,10 @@ export default function CustomersPage() {
       }
 
       setIsFormOpen(false);
-      await loadCustomers();
+      setEditingCustomer(null);
+      setFormData({ ...EMPTY_FORM });
+
+      await loadCustomers(false);
     } catch (err) {
       setFormError(getErrorMessage(err));
     } finally {
@@ -303,6 +343,7 @@ export default function CustomersPage() {
 
   const handleToggleStatus = async (customer: Customer) => {
     const nextStatus = !customer.is_active;
+
     const confirmation = window.confirm(
       `Apakah Anda yakin ingin ${
         nextStatus ? "mengaktifkan" : "menonaktifkan"
@@ -323,14 +364,18 @@ export default function CustomersPage() {
         }.`,
       });
 
-      await loadCustomers();
-
       if (selectedCustomer?.id === customer.id) {
-        setSelectedCustomer({
-          ...selectedCustomer,
-          is_active: nextStatus,
-        });
+        setSelectedCustomer((previous) =>
+          previous
+            ? {
+                ...previous,
+                is_active: nextStatus,
+              }
+            : null,
+        );
       }
+
+      await loadCustomers(false);
     } catch (err) {
       setNotice({
         type: "error",
@@ -363,7 +408,7 @@ export default function CustomersPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => void loadCustomers()}
+            onClick={() => void loadCustomers(true)}
             disabled={isLoading}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground transition hover:bg-secondary disabled:opacity-50"
           >
@@ -490,7 +535,7 @@ export default function CustomersPage() {
             <p className="text-sm text-danger">{error}</p>
             <button
               type="button"
-              onClick={() => void loadCustomers()}
+              onClick={() => void loadCustomers(true)}
               className="text-sm font-semibold text-danger underline"
             >
               Coba lagi
@@ -610,6 +655,7 @@ export default function CustomersPage() {
                         >
                           <Eye size={16} />
                         </button>
+
                         <button
                           type="button"
                           title="Edit customer"
@@ -618,6 +664,7 @@ export default function CustomersPage() {
                         >
                           <Pencil size={16} />
                         </button>
+
                         <button
                           type="button"
                           title={
@@ -630,11 +677,19 @@ export default function CustomersPage() {
                           className="rounded-lg p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground disabled:opacity-50"
                         >
                           {isUpdatingStatus === customer.id ? (
-                            <LoaderCircle size={16} className="animate-spin" />
-                          ) : customer.is_active ? (
-                            <ToggleRight size={18} className="text-success" />
+                            <LoaderCircle
+                              size={16}
+                              className="animate-spin"
+                            />
                           ) : (
-                            <ToggleLeft size={18} />
+                            <Power
+                              size={16}
+                              className={
+                                customer.is_active
+                                  ? "text-success"
+                                  : "text-muted-foreground"
+                              }
+                            />
                           )}
                         </button>
                       </div>
@@ -663,15 +718,19 @@ export default function CustomersPage() {
             <button
               type="button"
               disabled={page <= 1 || isLoading}
-              onClick={() => setPage((previous) => Math.max(1, previous - 1))}
+              onClick={() =>
+                setPage((previous) => Math.max(1, previous - 1))
+              }
               className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-medium text-foreground transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ChevronLeft size={15} />
               Sebelumnya
             </button>
+
             <span className="min-w-16 text-center text-xs text-muted-foreground">
               {pagination.current_page} / {pagination.last_page}
             </span>
+
             <button
               type="button"
               disabled={page >= pagination.last_page || isLoading}
@@ -703,9 +762,10 @@ export default function CustomersPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setIsFormOpen(false)}
+                onClick={closeForm}
                 disabled={isSaving}
                 className="rounded-lg p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                aria-label="Tutup form"
               >
                 <X size={19} />
               </button>
@@ -727,16 +787,21 @@ export default function CustomersPage() {
                     Informasi Perusahaan
                   </h3>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Field label="Kode Customer">
+                    <Field
+                      label="Kode Customer"
+                      required={!editingCustomer}
+                    >
                       <input
+                        required={!editingCustomer}
                         value={formData.customer_code ?? ""}
                         onChange={(event) =>
                           updateFormField("customer_code", event.target.value)
                         }
-                        placeholder="Kosongkan jika dibuat otomatis"
+                        placeholder="Contoh: CUS-001"
                         className={inputClass}
                       />
                     </Field>
+
                     <Field label="Nama Perusahaan" required>
                       <input
                         required
@@ -748,6 +813,7 @@ export default function CustomersPage() {
                         className={inputClass}
                       />
                     </Field>
+
                     <Field label="NPWP / Tax Identification Number">
                       <input
                         value={formData.tax_identification_number ?? ""}
@@ -761,6 +827,7 @@ export default function CustomersPage() {
                         className={inputClass}
                       />
                     </Field>
+
                     <Field label="Status Customer">
                       <select
                         value={formData.is_active ? "active" : "inactive"}
@@ -794,6 +861,7 @@ export default function CustomersPage() {
                         className={inputClass}
                       />
                     </Field>
+
                     <Field label="Email">
                       <input
                         type="email"
@@ -805,6 +873,7 @@ export default function CustomersPage() {
                         className={inputClass}
                       />
                     </Field>
+
                     <Field label="Nomor Telepon">
                       <input
                         value={formData.phone ?? ""}
@@ -828,12 +897,16 @@ export default function CustomersPage() {
                         rows={2}
                         value={formData.billing_address ?? ""}
                         onChange={(event) =>
-                          updateFormField("billing_address", event.target.value)
+                          updateFormField(
+                            "billing_address",
+                            event.target.value,
+                          )
                         }
                         placeholder="Alamat penagihan perusahaan"
                         className={textareaClass}
                       />
                     </Field>
+
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <Field label="Kota">
                         <input
@@ -845,6 +918,7 @@ export default function CustomersPage() {
                           className={inputClass}
                         />
                       </Field>
+
                       <Field label="Provinsi">
                         <input
                           value={formData.province ?? ""}
@@ -855,6 +929,7 @@ export default function CustomersPage() {
                           className={inputClass}
                         />
                       </Field>
+
                       <Field label="Kode Pos">
                         <input
                           value={formData.postal_code ?? ""}
@@ -865,6 +940,7 @@ export default function CustomersPage() {
                           className={inputClass}
                         />
                       </Field>
+
                       <Field label="Negara">
                         <input
                           value={formData.country ?? ""}
@@ -900,12 +976,13 @@ export default function CustomersPage() {
               <div className="flex justify-end gap-2 border-t border-border bg-secondary/30 px-5 py-4">
                 <button
                   type="button"
-                  onClick={() => setIsFormOpen(false)}
+                  onClick={closeForm}
                   disabled={isSaving}
                   className="h-10 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition hover:bg-secondary disabled:opacity-50"
                 >
                   Batal
                 </button>
+
                 <button
                   type="submit"
                   disabled={isSaving}
@@ -937,14 +1014,17 @@ export default function CustomersPage() {
                     Detail Customer
                   </h2>
                   <p className="text-xs text-muted-foreground">
-                    {selectedCustomer.customer_code || `CUS-${selectedCustomer.id}`}
+                    {selectedCustomer.customer_code ||
+                      `CUS-${selectedCustomer.id}`}
                   </p>
                 </div>
               </div>
+
               <button
                 type="button"
                 onClick={() => setSelectedCustomer(null)}
                 className="rounded-lg p-2 text-muted-foreground transition hover:bg-secondary"
+                aria-label="Tutup detail"
               >
                 <X size={19} />
               </button>
@@ -968,7 +1048,8 @@ export default function CustomersPage() {
                       {selectedCustomer.company_name}
                     </h3>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      NPWP: {selectedCustomer.tax_identification_number || "-"}
+                      NPWP:{" "}
+                      {selectedCustomer.tax_identification_number || "-"}
                     </p>
                   </div>
                   <StatusBadge active={selectedCustomer.is_active} />
@@ -989,6 +1070,7 @@ export default function CustomersPage() {
                       </p>
                     </div>
                   </div>
+
                   <div className="flex gap-3">
                     <Mail
                       size={17}
@@ -1001,6 +1083,7 @@ export default function CustomersPage() {
                       </p>
                     </div>
                   </div>
+
                   <div className="flex gap-3">
                     <Phone
                       size={17}
@@ -1015,6 +1098,7 @@ export default function CustomersPage() {
                       </p>
                     </div>
                   </div>
+
                   <div className="flex gap-3">
                     <MapPin
                       size={17}
@@ -1083,12 +1167,37 @@ export default function CustomersPage() {
                     <Pencil size={15} />
                     Edit
                   </button>
+
                   <button
                     type="button"
-                    onClick={() => void handleToggleStatus(selectedCustomer)}
-                    disabled={isUpdatingStatus === selectedCustomer.id}
-                    className="h-9 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary-hover disabled:opacity-50"
+                    onClick={() =>
+                      void handleToggleStatus(selectedCustomer)
+                    }
+                    disabled={
+                      isUpdatingStatus === selectedCustomer.id
+                    }
+                    title={
+                      selectedCustomer.is_active
+                        ? "Nonaktifkan customer"
+                        : "Aktifkan customer"
+                    }
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold text-foreground transition hover:bg-secondary disabled:opacity-50"
                   >
+                    {isUpdatingStatus === selectedCustomer.id ? (
+                      <LoaderCircle
+                        size={15}
+                        className="animate-spin"
+                      />
+                    ) : (
+                      <Power
+                        size={15}
+                        className={
+                          selectedCustomer.is_active
+                            ? "text-success"
+                            : "text-muted-foreground"
+                        }
+                      />
+                    )}
                     {selectedCustomer.is_active
                       ? "Nonaktifkan"
                       : "Aktifkan"}
@@ -1101,7 +1210,7 @@ export default function CustomersPage() {
       )}
 
       {notice && (
-        <div className="fixed bottom-5 right-5 z-[120] flex max-w-sm items-start gap-3 rounded-xl border border-border bg-card p-4 shadow-xl">
+        <div className="fixed bottom-5 right-5 z-[120] flex w-[calc(100%-2.5rem)] max-w-sm items-start gap-3 rounded-xl border border-border bg-card p-4 shadow-xl">
           <div
             className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
               notice.type === "success"
@@ -1115,14 +1224,18 @@ export default function CustomersPage() {
               <X size={15} />
             )}
           </div>
+
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground">
-              {notice.type === "success" ? "Berhasil" : "Terjadi Kesalahan"}
+              {notice.type === "success"
+                ? "Berhasil"
+                : "Terjadi Kesalahan"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {notice.message}
             </p>
           </div>
+
           <button
             type="button"
             onClick={closeNotice}
