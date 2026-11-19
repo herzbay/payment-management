@@ -1,4 +1,6 @@
+import Link from "next/link";
 import {
+  ArrowRight,
   ChartNoAxesCombined,
   ClipboardList,
   CreditCard,
@@ -30,66 +32,92 @@ const features = [
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-6 py-12">
+    <main className="flex min-h-screen items-center justify-center bg-background px-5 py-6 sm:px-8">
       <div className="w-full max-w-5xl">
-        <div className="mb-12 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <CreditCard size={23} />
+        {/* Header */}
+        <header className="mb-8 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <CreditCard size={21} />
+            </div>
+
+            <div>
+              <p className="text-sm font-bold tracking-tight text-foreground sm:text-base">
+                Payment Management
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Financial Operations System
+              </p>
+            </div>
           </div>
 
-          <div>
-            <p className="text-base font-bold tracking-tight text-foreground">
-              Payment Management
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Financial Operations System
-            </p>
-          </div>
-        </div>
+          <Link
+            href="/login"
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          >
+            Masuk
+            <ArrowRight size={16} />
+          </Link>
+        </header>
 
+        {/* Hero */}
         <section className="max-w-3xl">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700">
             <span className="h-2 w-2 rounded-full bg-blue-600" />
             Sistem Manajemen Keuangan Terintegrasi
           </div>
 
-          <h1 className="text-4xl font-bold leading-tight tracking-tight text-foreground sm:text-5xl">
+          <h1 className="text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl lg:text-5xl">
             Kelola operasional pembayaran perusahaan dalam satu sistem.
           </h1>
 
-          <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
             Platform terintegrasi untuk mengelola quotation, invoice,
             pembayaran, verifikasi, piutang, rekonsiliasi bank, dan
             laporan keuangan perusahaan.
           </p>
+
+          <div className="mt-6">
+            <Link
+              href="/login"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-lg"
+            >
+              Masuk ke Sistem
+              <ArrowRight size={17} />
+            </Link>
+          </div>
         </section>
 
-        <section className="mt-12 grid gap-4 sm:grid-cols-2">
+        {/* Features */}
+        <section className="mt-9 grid gap-3 sm:grid-cols-2">
           {features.map((feature) => {
             const Icon = feature.icon;
 
             return (
               <div
                 key={feature.title}
-                className="rounded-xl border border-border bg-card p-5 transition-shadow hover:shadow-md"
+                className="flex items-start gap-4 rounded-xl border border-border bg-card p-4 transition-shadow hover:shadow-md sm:p-5"
               >
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-primary">
-                  <Icon size={21} />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-primary">
+                  <Icon size={20} />
                 </div>
 
-                <h2 className="font-semibold text-card-foreground">
-                  {feature.title}
-                </h2>
+                <div className="min-w-0">
+                  <h2 className="text-sm font-semibold text-card-foreground sm:text-base">
+                    {feature.title}
+                  </h2>
 
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {feature.description}
-                </p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">
+                    {feature.description}
+                  </p>
+                </div>
               </div>
             );
           })}
         </section>
 
-        <footer className="mt-12 flex flex-col gap-2 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        {/* Footer */}
+        <footer className="mt-8 flex flex-col gap-2 border-t border-border pt-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>Payment Management System</p>
           <p>Internal Company Application</p>
         </footer>
