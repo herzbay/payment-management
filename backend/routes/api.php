@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\PaymentVerificationController;
 use App\Http\Controllers\Api\ReceiptController;
 use App\Http\Controllers\Api\AccountReceivableController;
 use App\Http\Controllers\Api\CollectionActivityController;
+use App\Http\Controllers\Api\AdjustmentController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', function () {
@@ -171,5 +172,55 @@ Route::middleware('auth:sanctum')->group(function () {
             'update',
         ]);
     });
+
+// Adjustment Management - Read Access
+Route::middleware(
+    'role:super-admin,finance-manager,finance-staff,auditor'
+)->group(function () {
+    Route::get('/adjustments', [
+        AdjustmentController::class,
+        'index',
+    ]);
+
+    Route::get('/adjustments/{id}', [
+        AdjustmentController::class,
+        'show',
+    ]);
+});
+
+// Adjustment Management - Create Access
+Route::middleware(
+    'role:super-admin,finance-manager,finance-staff'
+)->group(function () {
+    Route::post('/adjustments', [
+        AdjustmentController::class,
+        'store',
+    ]);
+
+    Route::post('/adjustments/{id}/apply', [
+        AdjustmentController::class,
+        'apply',
+    ]);
+});
+
+// Adjustment Management - Approval Access
+Route::middleware(
+    'role:super-admin,finance-manager'
+)->group(function () {
+    Route::post('/adjustments/{id}/approve', [
+        AdjustmentController::class,
+        'approve',
+    ]);
+
+    Route::post('/adjustments/{id}/reject', [
+        AdjustmentController::class,
+        'reject',
+    ]);
+
+    Route::post('/adjustments/{id}/cancel', [
+        AdjustmentController::class,
+        'cancel',
+    ]);
+});
     });
 });
