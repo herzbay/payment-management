@@ -1,7 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { usePathname } from "next/navigation";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Menu,
   Moon,
@@ -12,6 +17,7 @@ import {
   Settings,
   LogOut,
 } from "lucide-react";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface NavbarProps {
   onMenuClick: () => void;
@@ -36,6 +42,9 @@ const pageTitles: Record<string, string> = {
 
 export function Navbar({ onMenuClick }: NavbarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const { user, signOut } = useAuth();
 
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -80,6 +89,16 @@ export function Navbar({ onMenuClick }: NavbarProps) {
     )?.[1] ??
     "Payment Management";
 
+  const initials = user?.name
+    ? user.name
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join("")
+        .toUpperCase()
+    : "U";
+
   function toggleTheme() {
     const nextTheme = darkMode ? "light" : "dark";
 
@@ -91,6 +110,16 @@ export function Navbar({ onMenuClick }: NavbarProps) {
     localStorage.setItem("payment-management-theme", nextTheme);
 
     window.dispatchEvent(new Event(THEME_EVENT));
+  }
+
+  async function handleLogout() {
+    setProfileOpen(false);
+
+    try {
+      await signOut();
+    } finally {
+      router.replace("/login");
+    }
   }
 
   return (
@@ -150,16 +179,16 @@ export function Navbar({ onMenuClick }: NavbarProps) {
             className="flex items-center gap-2 rounded-lg p-1.5 transition-colors hover:bg-secondary"
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-              A
+              {initials}
             </div>
 
-            <div className="hidden text-left sm:block">
-              <p className="text-xs font-semibold text-foreground">
-                Administrator
+            <div className="hidden max-w-36 text-left sm:block">
+              <p className="truncate text-xs font-semibold text-foreground">
+                {user?.name ?? "Pengguna"}
               </p>
 
-              <p className="mt-0.5 text-[10px] text-muted-foreground">
-                Super Admin
+              <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                {user?.role?.name ?? "Pengguna"}
               </p>
             </div>
 
@@ -178,15 +207,19 @@ export function Navbar({ onMenuClick }: NavbarProps) {
                 onClick={() => setProfileOpen(false)}
               />
 
-              <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-border bg-card p-2 shadow-lg">
+              <div className="absolute right-0 top-full z-50 mt-2 w-60 rounded-xl border border-border bg-card p-2 shadow-lg">
                 <div className="border-b border-border px-3 py-3">
-                  <p className="text-sm font-semibold text-foreground">
-                    Administrator
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {user?.name}
                   </p>
 
                   <p className="mt-1 truncate text-xs text-muted-foreground">
-                    admin@company.com
+                    {user?.email}
                   </p>
+
+                  <span className="mt-2 inline-flex rounded-full bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary">
+                    {user?.role?.name ?? "Pengguna"}
+                  </span>
                 </div>
 
                 <div className="space-y-1 py-2">
@@ -201,7 +234,10 @@ export function Navbar({ onMenuClick }: NavbarProps) {
 
                   <button
                     type="button"
-                    onClick={() => setProfileOpen(false)}
+                    onClick={() => {
+                      setProfileOpen(false);
+                      router.push("/settings");
+                    }}
                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-secondary"
                   >
                     <Settings size={16} />
@@ -212,9 +248,8 @@ export function Navbar({ onMenuClick }: NavbarProps) {
 
                   <button
                     type="button"
-                    disabled
-                    title="Logout akan diaktifkan pada tahap autentikasi"
-                    className="flex w-full cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-muted-foreground opacity-60"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-danger hover:bg-danger-background"
                   >
                     <LogOut size={16} />
                     Keluar
