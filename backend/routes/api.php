@@ -1,27 +1,34 @@
 <?php
 
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\CustomerController;
-use App\Http\Controllers\Api\ServiceController;
-use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\AccountReceivableController;
+use App\Http\Controllers\Api\AdjustmentController;
 use App\Http\Controllers\Api\AgreementController;
+use App\Http\Controllers\Api\AuditTrailController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BankAccountController;
+use App\Http\Controllers\Api\BankReconciliationController;
+use App\Http\Controllers\Api\BankStatementController;
+use App\Http\Controllers\Api\BankStatementCsvImportController;
+use App\Http\Controllers\Api\BankStatementFinalizationController;
+use App\Http\Controllers\Api\CollectionActivityController;
+use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\FinancialReportController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\PaymentSettingController;
 use App\Http\Controllers\Api\PaymentTransactionController;
 use App\Http\Controllers\Api\PaymentVerificationController;
+use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\ReceiptController;
-use App\Http\Controllers\Api\AccountReceivableController;
-use App\Http\Controllers\Api\CollectionActivityController;
-use App\Http\Controllers\Api\AdjustmentController;
-use App\Http\Controllers\Api\BankAccountController;
-use App\Http\Controllers\Api\BankStatementController;
-use App\Http\Controllers\Api\BankReconciliationController;
-use App\Http\Controllers\Api\BankStatementFinalizationController;
-use App\Http\Controllers\Api\BankStatementCsvImportController;
-use App\Http\Controllers\Api\FinancialReportController;
-use App\Http\Controllers\Api\AuditTrailController;
-use App\Http\Controllers\Api\PaymentSettingController;
+use App\Http\Controllers\Api\ServiceController;
 use Illuminate\Support\Facades\Route;
 
+/*
+|--------------------------------------------------------------------------
+| Public Routes
+|--------------------------------------------------------------------------
+*/
+
+// API Health Check
 Route::get('/health', function () {
     return response()->json([
         'status' => 'ok',
@@ -30,114 +37,88 @@ Route::get('/health', function () {
     ]);
 });
 
+// Authentication
 Route::post('/login', [AuthController::class, 'login']);
 
+
+/*
+|--------------------------------------------------------------------------
+| Authenticated Routes
+|--------------------------------------------------------------------------
+*/
+
 Route::middleware('auth:sanctum')->group(function () {
+
+    // Authentication
     Route::get('/user', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // Read access: all authorized roles, including Auditor.
+
+    /*
+    |--------------------------------------------------------------------------
+    | READ ACCESS
+    |--------------------------------------------------------------------------
+    | All authorized roles, including Auditor.
+    */
+
     Route::middleware(
         'role:super-admin,finance-manager,finance-staff,sales-staff,auditor'
     )->group(function () {
-        // Customer endpoints.
+
+        // Customer Management
         Route::get('/customers', [CustomerController::class, 'index']);
         Route::get('/customers/{id}', [CustomerController::class, 'show']);
 
-        // Service endpoints.
+        // Service Management
         Route::get('/services', [ServiceController::class, 'index']);
         Route::get('/services/{id}', [ServiceController::class, 'show']);
 
-        // Quotation endpoints.
+        // Quotation Management
         Route::get('/quotations', [QuotationController::class, 'index']);
         Route::get('/quotations/{id}', [QuotationController::class, 'show']);
 
-        // Agreement endpoints.
+        // Agreement Management
         Route::get('/agreements', [AgreementController::class, 'index']);
         Route::get('/agreements/{id}', [AgreementController::class, 'show']);
 
-        // Invoice endpoints.
+        // Invoice Management
         Route::get('/invoices', [InvoiceController::class, 'index']);
         Route::get('/invoices/{id}', [InvoiceController::class, 'show']);
 
-        // Payment Transaction endpoints.
-        Route::get('/payment-transactions', [PaymentTransactionController::class, 'index']);
-        Route::get('/payment-transactions/{id}', [PaymentTransactionController::class, 'show']);
-
-        // Payment Verification endpoints.
-        Route::get('/payment-verifications', [PaymentVerificationController::class, 'index']);
-        Route::get('/payment-verifications/{id}', [PaymentVerificationController::class, 'show']);
-
-        // Receipt endpoints.
-        Route::get('/receipts', [ReceiptController::class, 'index']);
-        Route::get('/receipts/{id}', [ReceiptController::class, 'show']);
-    });
-
-    // Write access: Auditor is intentionally excluded.
-    Route::middleware(
-        'role:super-admin,finance-manager,finance-staff,sales-staff'
-    )->group(function () {
-        // Customer endpoints.
-        Route::post('/customers', [CustomerController::class, 'store']);
-        Route::put('/customers/{id}', [CustomerController::class, 'update']);
-        Route::patch('/customers/{id}/status', [
-            CustomerController::class,
-            'updateStatus',
-        ]);
-
-        // Service endpoints.
-        Route::post('/services', [ServiceController::class, 'store']);
-        Route::put('/services/{id}', [ServiceController::class, 'update']);
-        Route::patch('/services/{id}/status', [
-            ServiceController::class,
-            'updateStatus',
-        ]);
-
-        // Quotation endpoints.
-        Route::post('/quotations', [QuotationController::class, 'store']);
-        Route::put('/quotations/{id}', [QuotationController::class, 'update']);
-        Route::post('/quotations/{id}/submit', [QuotationController::class, 'submit']);
-        Route::post('/quotations/{id}/approve', [QuotationController::class, 'approve']);
-        Route::post('/quotations/{id}/reject', [QuotationController::class, 'reject']);
-
-        // Agreement endpoints.
-        Route::post('/agreements', [AgreementController::class, 'store']);
-        Route::put('/agreements/{id}', [AgreementController::class, 'update']);
-
-        // Invoice endpoints.
-        Route::post('/invoices', [InvoiceController::class, 'store']);
-        Route::put('/invoices/{id}', [InvoiceController::class, 'update']);
-
-        // Payment Transaction endpoints.
-        Route::post('/payment-transactions', [PaymentTransactionController::class, 'store']);
-        Route::put('/payment-transactions/{id}', [PaymentTransactionController::class, 'update']);
-
-        // Payment Verification endpoints.
-        Route::middleware('role:super-admin,finance-manager')->group(function () {
-            Route::post('/payment-verifications/{id}/approve', [
-                PaymentVerificationController::class,
-                'approve',
-            ]);
-
-            Route::post('/payment-verifications/{id}/reject', [
-                PaymentVerificationController::class,
-                'reject',
-            ]);
-        });
-
-        // Receipt endpoints.
-        Route::post('/receipts', [ReceiptController::class, 'store']);
-
-            Route::middleware(
-        'role:super-admin,finance-manager,finance-staff,auditor'
-    )->group(function () {
-        // Accounts Receivable
-        Route::get('/accounts-receivable', [
-            AccountReceivableController::class,
+        // Payment Transaction Management
+        Route::get('/payment-transactions', [
+            PaymentTransactionController::class,
             'index',
         ]);
 
-        // Letakkan route statis sebelum route dengan parameter {id}.
+        Route::get('/payment-transactions/{id}', [
+            PaymentTransactionController::class,
+            'show',
+        ]);
+
+        // Payment Verification
+        Route::get('/payment-verifications', [
+            PaymentVerificationController::class,
+            'index',
+        ]);
+
+        Route::get('/payment-verifications/{id}', [
+            PaymentVerificationController::class,
+            'show',
+        ]);
+
+        // Receipt Management
+        Route::get('/receipts', [ReceiptController::class, 'index']);
+        Route::get('/receipts/{id}', [ReceiptController::class, 'show']);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Accounts Receivable
+        |--------------------------------------------------------------------------
+        */
+
+        // Static routes must be declared before /{id}.
         Route::get('/accounts-receivable/summary', [
             AccountReceivableController::class,
             'summary',
@@ -148,12 +129,17 @@ Route::middleware('auth:sanctum')->group(function () {
             'aging',
         ]);
 
+        Route::get('/accounts-receivable', [
+            AccountReceivableController::class,
+            'index',
+        ]);
+
         Route::get('/accounts-receivable/{id}', [
             AccountReceivableController::class,
             'show',
         ]);
 
-        // Collection Activities - read
+        // Collection Activities
         Route::get('/collection-activities', [
             CollectionActivityController::class,
             'index',
@@ -163,13 +149,223 @@ Route::middleware('auth:sanctum')->group(function () {
             CollectionActivityController::class,
             'show',
         ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Adjustment Management
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/adjustments', [
+            AdjustmentController::class,
+            'index',
+        ]);
+
+        Route::get('/adjustments/{id}', [
+            AdjustmentController::class,
+            'show',
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Bank Account Management
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/bank-accounts', [
+            BankAccountController::class,
+            'index',
+        ]);
+
+        Route::get('/bank-accounts/{id}', [
+            BankAccountController::class,
+            'show',
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Bank Statement Management
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/bank-statements', [
+            BankStatementController::class,
+            'index',
+        ]);
+
+        Route::get('/bank-statements/{id}', [
+            BankStatementController::class,
+            'show',
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Bank Reconciliation
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/bank-statements/{statementId}/unmatched-lines',
+            [BankReconciliationController::class, 'unmatchedLines']
+        );
+
+        Route::get(
+            '/bank-statement-lines/{lineId}/candidates',
+            [BankReconciliationController::class, 'candidates']
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Financial Reports & Analytics
+        |--------------------------------------------------------------------------
+        */
+
+        Route::prefix('reports')->group(function () {
+            Route::get('/dashboard', [
+                FinancialReportController::class,
+                'dashboard',
+            ]);
+
+            Route::get('/payments', [
+                FinancialReportController::class,
+                'payments',
+            ]);
+
+            Route::get('/revenue', [
+                FinancialReportController::class,
+                'revenue',
+            ]);
+
+            Route::get('/receivables', [
+                FinancialReportController::class,
+                'receivables',
+            ]);
+
+            Route::get('/refunds', [
+                FinancialReportController::class,
+                'refunds',
+            ]);
+
+            Route::get('/bank-reconciliation', [
+                FinancialReportController::class,
+                'bankReconciliation',
+            ]);
+        });
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Audit Trail
+        |--------------------------------------------------------------------------
+        */
+
+        Route::prefix('audit-logs')->group(function () {
+            Route::get('/', [
+                AuditTrailController::class,
+                'index',
+            ]);
+
+            Route::get('/{id}', [
+                AuditTrailController::class,
+                'show',
+            ]);
+        });
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Payment Settings - Read Access
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/payment-settings', [
+            PaymentSettingController::class,
+            'index',
+        ])->middleware('role:super-admin,finance-manager');
+
+        Route::get('/payment-settings/{key}', [
+            PaymentSettingController::class,
+            'show',
+        ])->middleware('role:super-admin,finance-manager');
     });
 
-    // Collection Activities - write
-    // Auditor hanya dapat membaca, bukan membuat atau mengubah aktivitas.
+
+    /*
+    |--------------------------------------------------------------------------
+    | OPERATIONAL WRITE ACCESS
+    |--------------------------------------------------------------------------
+    | Auditor is excluded.
+    */
+
     Route::middleware(
-        'role:super-admin,finance-manager,finance-staff'
+        'role:super-admin,finance-manager,finance-staff,sales-staff'
     )->group(function () {
+
+        // Customer Management
+        Route::post('/customers', [CustomerController::class, 'store']);
+        Route::put('/customers/{id}', [CustomerController::class, 'update']);
+
+        Route::patch('/customers/{id}/status', [
+            CustomerController::class,
+            'updateStatus',
+        ]);
+
+        // Service Management
+        Route::post('/services', [ServiceController::class, 'store']);
+        Route::put('/services/{id}', [ServiceController::class, 'update']);
+
+        Route::patch('/services/{id}/status', [
+            ServiceController::class,
+            'updateStatus',
+        ]);
+
+        // Quotation Management
+        Route::post('/quotations', [QuotationController::class, 'store']);
+        Route::put('/quotations/{id}', [QuotationController::class, 'update']);
+
+        Route::post('/quotations/{id}/submit', [
+            QuotationController::class,
+            'submit',
+        ]);
+
+        Route::post('/quotations/{id}/approve', [
+            QuotationController::class,
+            'approve',
+        ]);
+
+        Route::post('/quotations/{id}/reject', [
+            QuotationController::class,
+            'reject',
+        ]);
+
+        // Agreement Management
+        Route::post('/agreements', [AgreementController::class, 'store']);
+        Route::put('/agreements/{id}', [AgreementController::class, 'update']);
+
+        // Invoice Management
+        Route::post('/invoices', [InvoiceController::class, 'store']);
+        Route::put('/invoices/{id}', [InvoiceController::class, 'update']);
+
+        // Payment Transaction Management
+        Route::post('/payment-transactions', [
+            PaymentTransactionController::class,
+            'store',
+        ]);
+
+        Route::put('/payment-transactions/{id}', [
+            PaymentTransactionController::class,
+            'update',
+        ]);
+
+        // Receipt Management
+        Route::post('/receipts', [ReceiptController::class, 'store']);
+
+        // Collection Activities
         Route::post('/collection-activities', [
             CollectionActivityController::class,
             'store',
@@ -179,168 +375,139 @@ Route::middleware('auth:sanctum')->group(function () {
             CollectionActivityController::class,
             'update',
         ]);
+
+        // Adjustment Management
+        Route::post('/adjustments', [
+            AdjustmentController::class,
+            'store',
+        ]);
+
+        Route::post('/adjustments/{id}/apply', [
+            AdjustmentController::class,
+            'apply',
+        ]);
+
+        // Bank Account Management
+        Route::post('/bank-accounts', [
+            BankAccountController::class,
+            'store',
+        ]);
+
+        Route::put('/bank-accounts/{id}', [
+            BankAccountController::class,
+            'update',
+        ]);
+
+        Route::patch('/bank-accounts/{id}/status', [
+            BankAccountController::class,
+            'updateStatus',
+        ]);
+
+        Route::patch('/bank-accounts/{id}/default', [
+            BankAccountController::class,
+            'setDefault',
+        ]);
+
+        // Bank Statement Management
+        Route::post('/bank-statements', [
+            BankStatementController::class,
+            'store',
+        ]);
+
+        Route::post('/bank-statements/{id}/import', [
+            BankStatementController::class,
+            'import',
+        ]);
+
+        // CSV Bank Statement Import
+        Route::post('/bank-statements/{statementId}/import-csv', [
+            BankStatementCsvImportController::class,
+            'import',
+        ]);
+
+        // Bank Transaction Matching
+        Route::post('/bank-statement-lines/{lineId}/match', [
+            BankReconciliationController::class,
+            'match',
+        ]);
+
+        Route::post('/bank-statement-lines/{lineId}/unmatch', [
+            BankReconciliationController::class,
+            'unmatch',
+        ]);
+
+        // Bank Statement Finalization
+        Route::post('/bank-statements/{statementId}/finalize', [
+            BankStatementFinalizationController::class,
+            'finalize',
+        ]);
     });
 
-// Adjustment Management - Read Access
-Route::middleware(
-    'role:super-admin,finance-manager,finance-staff,auditor'
-)->group(function () {
-    Route::get('/adjustments', [
-        AdjustmentController::class,
-        'index',
-    ]);
 
-    Route::get('/adjustments/{id}', [
-        AdjustmentController::class,
-        'show',
-    ]);
-});
+    /*
+    |--------------------------------------------------------------------------
+    | PAYMENT VERIFICATION
+    |--------------------------------------------------------------------------
+    | Only Super Admin and Finance Manager can approve or reject payments.
+    */
 
-// Adjustment Management - Create Access
-Route::middleware(
-    'role:super-admin,finance-manager,finance-staff'
-)->group(function () {
-    Route::post('/adjustments', [
-        AdjustmentController::class,
-        'store',
-    ]);
+    Route::middleware('role:super-admin,finance-manager')->group(function () {
 
-    Route::post('/adjustments/{id}/apply', [
-        AdjustmentController::class,
-        'apply',
-    ]);
-});
+        Route::post('/payment-verifications/{id}/approve', [
+            PaymentVerificationController::class,
+            'approve',
+        ]);
 
-// Adjustment Management - Approval Access
-Route::middleware(
-    'role:super-admin,finance-manager'
-)->group(function () {
-    Route::post('/adjustments/{id}/approve', [
-        AdjustmentController::class,
-        'approve',
-    ]);
+        Route::post('/payment-verifications/{id}/reject', [
+            PaymentVerificationController::class,
+            'reject',
+        ]);
+    });
 
-    Route::post('/adjustments/{id}/reject', [
-        AdjustmentController::class,
-        'reject',
-    ]);
 
-    Route::post('/adjustments/{id}/cancel', [
-        AdjustmentController::class,
-        'cancel',
-    ]);
-});
+    /*
+    |--------------------------------------------------------------------------
+    | ADJUSTMENT APPROVAL
+    |--------------------------------------------------------------------------
+    | Only Super Admin and Finance Manager can approve, reject, or cancel.
+    */
 
-// Bank Account Management - Read Access
-Route::middleware(
-    'role:super-admin,finance-manager,finance-staff,auditor'
-)->group(function () {
-    Route::get('/bank-accounts', [
-        BankAccountController::class,
-        'index',
-    ]);
+    Route::middleware('role:super-admin,finance-manager')->group(function () {
 
-    Route::get('/bank-accounts/{id}', [
-        BankAccountController::class,
-        'show',
-    ]);
-});
+        Route::post('/adjustments/{id}/approve', [
+            AdjustmentController::class,
+            'approve',
+        ]);
 
-// Bank Account Management - Write Access
-Route::middleware(
-    'role:super-admin,finance-manager,finance-staff'
-)->group(function () {
-    Route::post('/bank-accounts', [
-        BankAccountController::class,
-        'store',
-    ]);
+        Route::post('/adjustments/{id}/reject', [
+            AdjustmentController::class,
+            'reject',
+        ]);
 
-    Route::put('/bank-accounts/{id}', [
-        BankAccountController::class,
-        'update',
-    ]);
+        Route::post('/adjustments/{id}/cancel', [
+            AdjustmentController::class,
+            'cancel',
+        ]);
+    });
 
-    Route::patch('/bank-accounts/{id}/status', [
-        BankAccountController::class,
-        'updateStatus',
-    ]);
 
-    Route::patch('/bank-accounts/{id}/default', [
-        BankAccountController::class,
-        'setDefault',
-    ]);
-});
+    /*
+    |--------------------------------------------------------------------------
+    | PAYMENT SETTINGS - WRITE ACCESS
+    |--------------------------------------------------------------------------
+    | Only Super Admin and Finance Manager.
+    */
 
-// ==========================================
-// BANK STATEMENT MANAGEMENT
-// ==========================================
+    Route::middleware('role:super-admin,finance-manager')->group(function () {
 
-// Read access: Super Admin, Finance Manager,
-// Finance Staff, and Auditor.
-Route::middleware(
-    'role:super-admin,finance-manager,finance-staff,auditor'
-)->group(function () {
-    Route::get('/bank-statements', [
-        BankStatementController::class,
-        'index',
-    ]);
+        Route::put('/payment-settings/{key}/value', [
+            PaymentSettingController::class,
+            'updateValue',
+        ]);
 
-    Route::get('/bank-statements/{id}', [
-        BankStatementController::class,
-        'show',
-    ]);
-});
-
-// Write access: Super Admin, Finance Manager,
-// and Finance Staff. Auditor is excluded.
-Route::middleware(
-    'role:super-admin,finance-manager,finance-staff'
-)->group(function () {
-    Route::post('/bank-statements', [
-        BankStatementController::class,
-        'store',
-    ]);
-
-    Route::post('/bank-statements/{id}/import', [
-        BankStatementController::class,
-        'import',
-    ]);
-});
-
-// ==========================================
-// BANK RECONCILIATION
-// ==========================================
-
-// Read access: Super Admin, Finance Manager,
-// Finance Staff, and Auditor.
-Route::middleware(
-    'role:super-admin,finance-manager,finance-staff,auditor'
-)->group(function () {
-    Route::get(
-        '/bank-statements/{statementId}/unmatched-lines',
-        [BankReconciliationController::class, 'unmatchedLines']
-    );
-
-    Route::get(
-        '/bank-statement-lines/{lineId}/candidates',
-        [BankReconciliationController::class, 'candidates']
-    );
-});
-
-// Write access: Super Admin, Finance Manager,
-// and Finance Staff.
-Route::middleware(
-    'role:super-admin,finance-manager,finance-staff'
-)->group(function () {
-    Route::post(
-        '/bank-statement-lines/{lineId}/match',
-        [BankReconciliationController::class, 'match']
-    );
-
-    Route::post(
-        '/bank-statement-lines/{lineId}/unmatch',
-        [BankReconciliationController::class, 'unmatch']
-    );
-});
+        Route::patch('/payment-settings/{key}/status', [
+            PaymentSettingController::class,
+            'updateStatus',
+        ]);
     });
 });
