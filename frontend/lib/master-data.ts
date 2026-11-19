@@ -90,8 +90,10 @@ function buildQuery(filters: MasterDataFilters = {}): string {
     params.set("search", filters.search.trim());
   }
 
+  // Laravel boolean validation accepts 1 and 0,
+  // but does not accept the query strings "true" and "false".
   if (filters.is_active !== undefined) {
-    params.set("is_active", String(filters.is_active));
+    params.set("is_active", filters.is_active ? "1" : "0");
   }
 
   if (filters.page !== undefined) {
@@ -103,6 +105,7 @@ function buildQuery(filters: MasterDataFilters = {}): string {
   }
 
   const query = params.toString();
+
   return query ? `?${query}` : "";
 }
 

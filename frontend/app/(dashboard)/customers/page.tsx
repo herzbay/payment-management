@@ -10,7 +10,6 @@ import {
 import {
   Building2,
   Check,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Eye,
