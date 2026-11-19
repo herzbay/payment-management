@@ -196,7 +196,7 @@ class CollectionActivityService
             ]);
 
             $activity->update([
-                'assigned_to' => $data['assigned_to'] ?? $activity->assigned_to,
+                'assigned_to' => array_key_exists('assigned_to', $data)? $data['assigned_to']: $activity->assigned_to,
                 'activity_type' => $data['activity_type'] ?? $activity->activity_type,
                 'activity_date' => $data['activity_date'] ?? $activity->activity_date,
                 'contact_method' => array_key_exists('contact_method', $data)

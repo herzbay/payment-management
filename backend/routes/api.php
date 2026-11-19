@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\PaymentTransactionController;
 use App\Http\Controllers\Api\PaymentVerificationController;
 use App\Http\Controllers\Api\ReceiptController;
+use App\Http\Controllers\Api\AccountReceivableController;
+use App\Http\Controllers\Api\CollectionActivityController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', function () {
@@ -116,5 +118,58 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Receipt endpoints.
         Route::post('/receipts', [ReceiptController::class, 'store']);
+
+            Route::middleware(
+        'role:super-admin,finance-manager,finance-staff,auditor'
+    )->group(function () {
+        // Accounts Receivable
+        Route::get('/accounts-receivable', [
+            AccountReceivableController::class,
+            'index',
+        ]);
+
+        // Letakkan route statis sebelum route dengan parameter {id}.
+        Route::get('/accounts-receivable/summary', [
+            AccountReceivableController::class,
+            'summary',
+        ]);
+
+        Route::get('/accounts-receivable/aging', [
+            AccountReceivableController::class,
+            'aging',
+        ]);
+
+        Route::get('/accounts-receivable/{id}', [
+            AccountReceivableController::class,
+            'show',
+        ]);
+
+        // Collection Activities - read
+        Route::get('/collection-activities', [
+            CollectionActivityController::class,
+            'index',
+        ]);
+
+        Route::get('/collection-activities/{id}', [
+            CollectionActivityController::class,
+            'show',
+        ]);
+    });
+
+    // Collection Activities - write
+    // Auditor hanya dapat membaca, bukan membuat atau mengubah aktivitas.
+    Route::middleware(
+        'role:super-admin,finance-manager,finance-staff'
+    )->group(function () {
+        Route::post('/collection-activities', [
+            CollectionActivityController::class,
+            'store',
+        ]);
+
+        Route::put('/collection-activities/{id}', [
+            CollectionActivityController::class,
+            'update',
+        ]);
+    });
     });
 });
