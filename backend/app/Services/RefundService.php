@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Invoice;
 use App\Models\PaymentAllocation;
 use App\Models\PaymentTransaction;
 use App\Models\Refund;
@@ -17,6 +18,7 @@ class RefundService
     public function __construct(
         private DocumentNumberingService $documentNumberingService,
         private AuditLogService $auditLogService,
+        private AccountReceivableService $accountReceivableService,
     ) {}
 
     public function getAll(array $filters = []): LengthAwarePaginator
@@ -29,46 +31,60 @@ class RefundService
                 'processedBy',
                 'items.paymentAllocation.invoice',
             ])
-            ->when($filters['search'] ?? null, function (Builder $query, string $search) {
+            ->when($filters['search'] ?? null, function (
+                Builder $query,
+                string $search
+            ) {
                 $query->where(function (Builder $subQuery) use ($search) {
                     $subQuery
                         ->where('refund_number', 'ilike', "%{$search}%")
                         ->orWhere('reason', 'ilike', "%{$search}%")
-                        ->orWhereHas('paymentTransaction', function (Builder $paymentQuery) use ($search) {
-                            $paymentQuery->where(
-                                'transaction_number',
-                                'ilike',
-                                "%{$search}%"
-                            );
-                        })
-                        ->orWhereHas('customer', function (Builder $customerQuery) use ($search) {
-                            $customerQuery->where(
-                                'company_name',
-                                'ilike',
-                                "%{$search}%"
-                            );
-                        });
+                        ->orWhereHas(
+                            'paymentTransaction',
+                            function (Builder $paymentQuery) use ($search) {
+                                $paymentQuery->where(
+                                    'transaction_number',
+                                    'ilike',
+                                    "%{$search}%"
+                                );
+                            }
+                        )
+                        ->orWhereHas(
+                            'customer',
+                            function (Builder $customerQuery) use ($search) {
+                                $customerQuery->where(
+                                    'company_name',
+                                    'ilike',
+                                    "%{$search}%"
+                                );
+                            }
+                        );
                 });
             })
             ->when(
                 $filters['status'] ?? null,
-                fn (Builder $query, string $status) => $query->where('status', $status)
+                fn (Builder $query, string $status) =>
+                    $query->where('status', $status)
             )
             ->when(
                 $filters['customer_id'] ?? null,
-                fn (Builder $query, int $customerId) => $query->where('customer_id', $customerId)
+                fn (Builder $query, int $customerId) =>
+                    $query->where('customer_id', $customerId)
             )
             ->when(
                 $filters['payment_transaction_id'] ?? null,
-                fn (Builder $query, int $paymentId) => $query->where('payment_transaction_id', $paymentId)
+                fn (Builder $query, int $paymentId) =>
+                    $query->where('payment_transaction_id', $paymentId)
             )
             ->when(
                 $filters['refund_date_from'] ?? null,
-                fn (Builder $query, string $date) => $query->whereDate('refund_date', '>=', $date)
+                fn (Builder $query, string $date) =>
+                    $query->whereDate('refund_date', '>=', $date)
             )
             ->when(
                 $filters['refund_date_to'] ?? null,
-                fn (Builder $query, string $date) => $query->whereDate('refund_date', '<=', $date)
+                fn (Builder $query, string $date) =>
+                    $query->whereDate('refund_date', '<=', $date)
             )
             ->latest()
             ->paginate($filters['per_page'] ?? 15);
@@ -89,7 +105,8 @@ class RefundService
     }
 
     /**
-     * Mengajukan refund berdasarkan alokasi pembayaran yang sudah diverifikasi.
+     * Mengajukan refund berdasarkan alokasi pembayaran
+     * yang sudah diverifikasi.
      *
      * Format items:
      * [
@@ -119,7 +136,9 @@ class RefundService
 
             if (empty($items)) {
                 throw ValidationException::withMessages([
-                    'items' => ['Minimal satu alokasi pembayaran harus dipilih.'],
+                    'items' => [
+                        'Minimal satu alokasi pembayaran harus dipilih.',
+                    ],
                 ]);
             }
 
@@ -128,7 +147,9 @@ class RefundService
 
             if ($allocationIds->unique()->count() !== $allocationIds->count()) {
                 throw ValidationException::withMessages([
-                    'items' => ['Alokasi pembayaran tidak boleh dipilih lebih dari satu kali.'],
+                    'items' => [
+                        'Alokasi pembayaran tidak boleh dipilih lebih dari satu kali.',
+                    ],
                 ]);
             }
 
@@ -141,7 +162,9 @@ class RefundService
 
             if ($allocations->count() !== $allocationIds->count()) {
                 throw ValidationException::withMessages([
-                    'items' => ['Salah satu alokasi pembayaran tidak ditemukan.'],
+                    'items' => [
+                        'Salah satu alokasi pembayaran tidak ditemukan.',
+                    ],
                 ]);
             }
 
@@ -149,9 +172,14 @@ class RefundService
             $validatedItems = [];
 
             foreach ($items as $item) {
-                $allocation = $allocations->get($item['payment_allocation_id']);
+                $allocation = $allocations->get(
+                    $item['payment_allocation_id']
+                );
 
-                if ((int) $allocation->payment_transaction_id !== (int) $payment->id) {
+                if (
+                    (int) $allocation->payment_transaction_id
+                    !== (int) $payment->id
+                ) {
                     throw ValidationException::withMessages([
                         'items' => [
                             'Alokasi yang dipilih bukan bagian dari transaksi pembayaran tersebut.',
@@ -159,15 +187,21 @@ class RefundService
                     ]);
                 }
 
-                $refundMinor = $this->toMinorUnits($item['refund_amount']);
+                $refundMinor = $this->toMinorUnits(
+                    $item['refund_amount']
+                );
 
                 if ($refundMinor <= 0) {
                     throw ValidationException::withMessages([
-                        'items' => ['Jumlah refund harus lebih besar dari nol.'],
+                        'items' => [
+                            'Jumlah refund harus lebih besar dari nol.',
+                        ],
                     ]);
                 }
 
-                $allocatedMinor = $this->toMinorUnits($allocation->allocated_amount);
+                $allocatedMinor = $this->toMinorUnits(
+                    $allocation->allocated_amount
+                );
 
                 $reservedMinor = $this->getReservedRefundAmount(
                     (int) $allocation->id
@@ -192,14 +226,19 @@ class RefundService
                 ];
             }
 
-            if ($totalRefund > $this->toMinorUnits($payment->amount)) {
+            if (
+                $totalRefund > $this->toMinorUnits($payment->amount)
+            ) {
                 throw ValidationException::withMessages([
-                    'items' => ['Total refund melebihi jumlah transaksi pembayaran.'],
+                    'items' => [
+                        'Total refund melebihi jumlah transaksi pembayaran.',
+                    ],
                 ]);
             }
 
             $refund = Refund::create([
-                'refund_number' => $this->documentNumberingService->generate('refund'),
+                'refund_number' => $this->documentNumberingService
+                    ->generate('refund'),
                 'payment_transaction_id' => $payment->id,
                 'customer_id' => $payment->customer_id,
                 'requested_by' => Auth::id(),
@@ -256,7 +295,11 @@ class RefundService
         string $status,
         ?string $comments,
     ): Refund {
-        return DB::transaction(function () use ($id, $status, $comments) {
+        return DB::transaction(function () use (
+            $id,
+            $status,
+            $comments
+        ) {
             $refund = Refund::query()
                 ->lockForUpdate()
                 ->findOrFail($id);
@@ -277,8 +320,12 @@ class RefundService
 
             $refund->update([
                 'status' => $status,
-                'rejection_reason' => $status === 'rejected' ? $comments : null,
-                'approved_at' => $status === 'approved' ? now() : null,
+                'rejection_reason' => $status === 'rejected'
+                    ? $comments
+                    : null,
+                'approved_at' => $status === 'approved'
+                    ? now()
+                    : null,
             ]);
 
             $this->auditLogService->updated(
@@ -312,19 +359,27 @@ class RefundService
 
             if ($refund->status !== 'approved') {
                 throw ValidationException::withMessages([
-                    'status' => ['Hanya refund yang sudah disetujui dapat diproses.'],
+                    'status' => [
+                        'Hanya refund yang sudah disetujui dapat diproses.',
+                    ],
                 ]);
             }
 
-            $oldValues = ['status' => $refund->status];
+            $oldValues = [
+                'status' => $refund->status,
+            ];
 
             $refund->update([
                 'status' => 'processing',
                 'processed_by' => Auth::id(),
-                'refund_method' => $data['refund_method'] ?? $refund->refund_method,
-                'destination_account' => $data['destination_account'] ?? $refund->destination_account,
-                'refund_reference' => $data['refund_reference'] ?? $refund->refund_reference,
-                'refund_date' => $data['refund_date'] ?? $refund->refund_date,
+                'refund_method' => $data['refund_method']
+                    ?? $refund->refund_method,
+                'destination_account' => $data['destination_account']
+                    ?? $refund->destination_account,
+                'refund_reference' => $data['refund_reference']
+                    ?? $refund->refund_reference,
+                'refund_date' => $data['refund_date']
+                    ?? $refund->refund_date,
                 'processed_at' => now(),
                 'notes' => $data['notes'] ?? $refund->notes,
             ]);
@@ -351,6 +406,12 @@ class RefundService
         });
     }
 
+    /**
+     * Menyelesaikan refund dan menyinkronkan saldo Accounts Receivable.
+     *
+     * Sinkronisasi AR hanya dilakukan setelah status refund menjadi completed.
+     * Semua perubahan berada dalam satu transaksi database.
+     */
     public function complete(int $id, array $data = []): Refund
     {
         return DB::transaction(function () use ($id, $data) {
@@ -360,22 +421,68 @@ class RefundService
 
             if ($refund->status !== 'processing') {
                 throw ValidationException::withMessages([
-                    'status' => ['Hanya refund yang sedang diproses dapat diselesaikan.'],
+                    'status' => [
+                        'Hanya refund yang sedang diproses dapat diselesaikan.',
+                    ],
+                ]);
+            }
+
+            $refund->load('items.paymentAllocation');
+
+            $invoiceIds = $refund->items
+                ->map(
+                    fn (RefundItem $item) =>
+                        $item->paymentAllocation?->invoice_id
+                )
+                ->filter()
+                ->unique()
+                ->sort()
+                ->values();
+
+            if ($invoiceIds->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'items' => [
+                        'Refund tidak memiliki alokasi pembayaran dengan invoice yang valid.',
+                    ],
                 ]);
             }
 
             $oldValues = [
                 'status' => $refund->status,
                 'completed_at' => $refund->completed_at,
+                'refund_reference' => $refund->refund_reference,
+                'proof_path' => $refund->proof_path,
             ];
 
             $refund->update([
                 'status' => 'completed',
                 'completed_at' => now(),
-                'refund_reference' => $data['refund_reference'] ?? $refund->refund_reference,
-                'proof_path' => $data['proof_path'] ?? $refund->proof_path,
+                'refund_reference' => $data['refund_reference']
+                    ?? $refund->refund_reference,
+                'proof_path' => $data['proof_path']
+                    ?? $refund->proof_path,
                 'notes' => $data['notes'] ?? $refund->notes,
             ]);
+
+            // Sinkronkan AR setiap invoice yang menerima alokasi refund.
+            // Apabila salah satu sinkronisasi gagal, transaksi refund
+            // dan seluruh perubahan AR akan di-rollback.
+            $invoices = Invoice::query()
+                ->whereIn('id', $invoiceIds)
+                ->orderBy('id')
+                ->get();
+
+            if ($invoices->count() !== $invoiceIds->count()) {
+                throw ValidationException::withMessages([
+                    'items' => [
+                        'Salah satu invoice terkait refund tidak ditemukan.',
+                    ],
+                ]);
+            }
+
+            foreach ($invoices as $invoice) {
+                $this->accountReceivableService->syncFromInvoice($invoice);
+            }
 
             $this->auditLogService->updated(
                 module: 'refunds',
@@ -386,6 +493,8 @@ class RefundService
                     'status' => $refund->status,
                     'completed_at' => $refund->completed_at,
                     'refund_reference' => $refund->refund_reference,
+                    'proof_path' => $refund->proof_path,
+                    'synchronized_invoice_ids' => $invoiceIds->all(),
                 ],
             );
 
@@ -406,7 +515,11 @@ class RefundService
                 ->lockForUpdate()
                 ->findOrFail($id);
 
-            if (! in_array($refund->status, ['pending_approval', 'approved'], true)) {
+            if (! in_array(
+                $refund->status,
+                ['pending_approval', 'approved'],
+                true
+            )) {
                 throw ValidationException::withMessages([
                     'status' => [
                         'Refund hanya dapat dibatalkan sebelum proses pengembalian dana dimulai.',
@@ -421,7 +534,11 @@ class RefundService
 
             $refund->update([
                 'status' => 'cancelled',
-                'notes' => trim(($refund->notes ?? '') . "\nPembatalan: " . $reason),
+                'notes' => trim(
+                    ($refund->notes ?? '')
+                    . "\nPembatalan: "
+                    . $reason
+                ),
             ]);
 
             $this->auditLogService->updated(
@@ -454,7 +571,10 @@ class RefundService
         $amount = RefundItem::query()
             ->where('payment_allocation_id', $allocationId)
             ->whereHas('refund', function (Builder $query) {
-                $query->whereNotIn('status', ['rejected', 'cancelled']);
+                $query->whereNotIn(
+                    'status',
+                    ['rejected', 'cancelled']
+                );
             })
             ->sum('refund_amount');
 

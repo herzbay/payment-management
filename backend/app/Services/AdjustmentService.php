@@ -30,6 +30,7 @@ class AdjustmentService
     public function __construct(
         private DocumentNumberingService $documentNumberingService,
         private AuditLogService $auditLogService,
+        private AccountReceivableService $accountReceivableService,
     ) {}
 
     public function getAll(array $filters = []): LengthAwarePaginator
@@ -345,6 +346,8 @@ class AdjustmentService
                 'applied_by' => Auth::id(),
                 'applied_at' => now(),
             ]);
+
+            $this->accountReceivableService->syncFromInvoice($invoice);
 
             $this->auditLogService->updated(
                 module: 'adjustments',

@@ -89,10 +89,12 @@ class AccountReceivableService
     {
         return DB::transaction(function () use ($invoice) {
             $lockedInvoice = Invoice::query()
+                ->whereKey($invoice->id)
                 ->lockForUpdate()
-                ->findOrFail($invoice->id);
+                ->firstOrFail();
 
-            $paidAmount = DB::table('payment_allocations as pa')
+            // 1. Total pembayaran yang sudah terverifikasi.
+            $verifiedPayments = DB::table('payment_allocations as pa')
                 ->join(
                     'payment_transactions as pt',
                     'pt.id',
@@ -103,66 +105,124 @@ class AccountReceivableService
                 ->where('pt.status', 'verified')
                 ->sum('pa.allocated_amount');
 
-            $invoiceMinor = $this->toMinorUnits(
+            // 2. Total refund yang sudah selesai, berdasarkan alokasi invoice.
+            $completedRefunds = DB::table('refund_items as ri')
+                ->join('refunds as r', 'r.id', '=', 'ri.refund_id')
+                ->join(
+                    'payment_allocations as pa',
+                    'pa.id',
+                    '=',
+                    'ri.payment_allocation_id'
+                )
+                ->where('pa.invoice_id', $lockedInvoice->id)
+                ->where('r.status', 'completed')
+                ->sum('ri.refund_amount');
+
+            // 3. Adjustment yang sudah diterapkan.
+            $decreaseAdjustments = DB::table('adjustments')
+                ->where('invoice_id', $lockedInvoice->id)
+                ->where('status', 'applied')
+                ->where('direction', 'decrease')
+                ->sum('amount');
+
+            $increaseAdjustments = DB::table('adjustments')
+                ->where('invoice_id', $lockedInvoice->id)
+                ->where('status', 'applied')
+                ->where('direction', 'increase')
+                ->sum('amount');
+
+            // 4. Semua perhitungan uang dilakukan dalam satuan minor (sen).
+            $originalInvoiceAmount = $this->toMinorUnits(
                 $lockedInvoice->total_amount
             );
 
-            $paidMinor = $this->toMinorUnits($paidAmount ?? 0);
+            $decreaseAmount = $this->toMinorUnits($decreaseAdjustments);
+            $increaseAmount = $this->toMinorUnits($increaseAdjustments);
 
-            $outstandingMinor = max(0, $invoiceMinor - $paidMinor);
+            $effectiveInvoiceAmount = $originalInvoiceAmount
+                + $increaseAmount
+                - $decreaseAmount;
 
-            if ($paidMinor === 0) {
-                $status = now()->toDateString() > $lockedInvoice->due_date->toDateString()
-                    ? 'overdue'
-                    : 'open';
-            } elseif ($paidMinor < $invoiceMinor) {
-                $status = now()->toDateString() > $lockedInvoice->due_date->toDateString()
-                    ? 'overdue'
-                    : 'open';
-            } elseif ($paidMinor === $invoiceMinor) {
-                $status = 'paid';
-            } else {
-                $status = 'overpaid';
+            if ($effectiveInvoiceAmount < 0) {
+                throw new \RuntimeException(
+                    'Total adjustment tidak boleh membuat nilai invoice negatif.'
+                );
             }
 
-            $lastPaymentDate = DB::table('payment_transactions as pt')
+            $grossPaidAmount = $this->toMinorUnits($verifiedPayments);
+            $refundedAmount = $this->toMinorUnits($completedRefunds);
+
+            if ($refundedAmount > $grossPaidAmount) {
+                throw new \RuntimeException(
+                    'Total refund selesai melebihi pembayaran terverifikasi untuk invoice ini.'
+                );
+            }
+
+            $netPaidAmount = $grossPaidAmount - $refundedAmount;
+
+            $outstandingAmount = max(
+                0,
+                $effectiveInvoiceAmount - $netPaidAmount
+            );
+
+            // 5. Tentukan status piutang.
+            if ($netPaidAmount > $effectiveInvoiceAmount) {
+                $status = 'overpaid';
+                $paymentStatus = 'overpaid';
+            } elseif ($outstandingAmount === 0) {
+                $status = 'paid';
+                $paymentStatus = 'paid';
+            } else {
+                $isOverdue = $lockedInvoice->due_date
+                    && today()->gt($lockedInvoice->due_date);
+
+                $status = $isOverdue ? 'overdue' : 'open';
+
+                $paymentStatus = $netPaidAmount > 0
+                    ? 'partially_paid'
+                    : 'unpaid';
+            }
+
+            // 6. Tanggal pembayaran terakhir yang terverifikasi.
+            $lastPaymentDate = DB::table('payment_allocations as pa')
                 ->join(
-                    'payment_allocations as pa',
-                    'pa.payment_transaction_id',
+                    'payment_transactions as pt',
+                    'pt.id',
                     '=',
-                    'pt.id'
+                    'pa.payment_transaction_id'
                 )
                 ->where('pa.invoice_id', $lockedInvoice->id)
                 ->where('pt.status', 'verified')
                 ->max('pt.payment_date');
 
-            $receivable = AccountReceivable::query()
-                ->where('invoice_id', $lockedInvoice->id)
-                ->lockForUpdate()
-                ->first();
+            // 7. Simpan saldo Accounts Receivable.
+            $receivable = AccountReceivable::query()->updateOrCreate(
+                ['invoice_id' => $lockedInvoice->id],
+                [
+                    'customer_id' => $lockedInvoice->customer_id,
+                    'currency' => $lockedInvoice->currency,
+                    'invoice_amount' => $this->fromMinorUnits(
+                        $effectiveInvoiceAmount
+                    ),
+                    'paid_amount' => $this->fromMinorUnits(
+                        $netPaidAmount
+                    ),
+                    'outstanding_amount' => $this->fromMinorUnits(
+                        $outstandingAmount
+                    ),
+                    'due_date' => $lockedInvoice->due_date,
+                    'status' => $status,
+                    'last_payment_date' => $lastPaymentDate,
+                ]
+            );
 
-            $values = [
-                'customer_id' => $lockedInvoice->customer_id,
-                'currency' => $lockedInvoice->currency,
-                'invoice_amount' => $this->fromMinorUnits($invoiceMinor),
-                'paid_amount' => $this->fromMinorUnits($paidMinor),
-                'outstanding_amount' => $this->fromMinorUnits($outstandingMinor),
-                'due_date' => $lockedInvoice->due_date,
-                'status' => $status,
-                'last_payment_date' => $lastPaymentDate,
-            ];
+            // Payment status invoice ikut disinkronkan.
+            $lockedInvoice->update([
+                'payment_status' => $paymentStatus,
+            ]);
 
-            if ($receivable) {
-                $receivable->update($values);
-            } else {
-                $receivable = AccountReceivable::create([
-                    'invoice_id' => $lockedInvoice->id,
-                    ...$values,
-                ]);
-            }
-
-            return $receivable->load([
-                'invoice',
+            return $receivable->fresh([
+                'invoice.customer',
                 'customer',
             ]);
         });
