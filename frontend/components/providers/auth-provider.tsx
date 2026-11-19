@@ -7,24 +7,28 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ReactNode,
 } from "react";
-import type { AuthUser } from "@/types/auth";
+
+import type {
+  AuthUser,
+  LoginResponse,
+  UserResponse,
+} from "@/types/auth";
 
 interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  refreshUser: () => Promise<AuthUser | null>;
+  refreshUser: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const AuthContext = createContext<AuthContextValue | undefined>(
+  undefined
+);
 
-export function AuthProvider({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -35,24 +39,21 @@ export function AuthProvider({
         headers: {
           Accept: "application/json",
         },
+        credentials: "same-origin",
         cache: "no-store",
       });
 
-      const payload = await response.json();
-
-      if (!response.ok || !payload.data) {
+      if (!response.ok) {
         setUser(null);
-        return null;
+        return;
       }
 
-      const currentUser = payload.data as AuthUser;
+      const result = (await response.json()) as UserResponse;
 
-      setUser(currentUser);
-
-      return currentUser;
-    } catch {
+      setUser(result.data);
+    } catch (error) {
+      console.error("Failed to retrieve authenticated user:", error);
       setUser(null);
-      return null;
     } finally {
       setIsLoading(false);
     }
@@ -66,25 +67,23 @@ export function AuthProvider({
           Accept: "application/json",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
+        credentials: "same-origin",
+        body: JSON.stringify({ email, password }),
       });
 
-      const payload = await response.json();
+      const result = (await response.json()) as LoginResponse & {
+        message?: string;
+      };
 
       if (!response.ok) {
-        throw new Error(
-          payload.message || "Email atau password tidak valid."
-        );
+        throw new Error(result.message || "Login gagal.");
       }
 
-      if (!payload.data?.user) {
+      if (!result.data?.user) {
         throw new Error("Data pengguna tidak ditemukan.");
       }
 
-      setUser(payload.data.user as AuthUser);
+      setUser(result.data.user);
       setIsLoading(false);
     },
     []
@@ -97,15 +96,23 @@ export function AuthProvider({
         headers: {
           Accept: "application/json",
         },
+        credentials: "same-origin",
       });
     } finally {
       setUser(null);
+      setIsLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    void refreshUser();
-  }, [refreshUser]);
+    useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+        void refreshUser();
+    }, 0);
+
+    return () => {
+        window.clearTimeout(timeoutId);
+    };
+    }, [refreshUser]);
 
   const value = useMemo(
     () => ({
@@ -125,7 +132,7 @@ export function AuthProvider({
   );
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
 
   if (!context) {

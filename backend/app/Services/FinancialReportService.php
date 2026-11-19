@@ -422,10 +422,10 @@ class FinancialReportService
 
     private function resolveDateRange(array $filters): array
     {
-        return [
-            $filters['from'] ?? now()->startOfMonth()->toDateString(),
-            $filters['to'] ?? now()->toDateString(),
-        ];
+        $from = $filters['from'] ?? now()->startOfMonth()->toDateString();
+        $to = $filters['to'] ?? now()->toDateString();
+
+        return [$from, $to];
     }
 
     private function perPage(array $filters): int
