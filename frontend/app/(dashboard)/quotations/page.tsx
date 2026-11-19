@@ -25,10 +25,12 @@ import {
   ReceiptText,
   Calculator,
   ClipboardList,
+  Send,
 } from "lucide-react";
 
 import { quotationService } from "@/lib/quotation";
 import { customerService, serviceService } from "@/lib/master-data";
+import SubmitApprovalDialog from "@/components/quotations/submit-approval-dialog";
 
 import type {
   Customer,
@@ -73,6 +75,11 @@ interface QuotationFormState {
   customer_notes: string;
   items: QuotationFormItem[];
   terms: QuotationFormTerm[];
+}
+
+interface ApprovalQuotation {
+  id: number;
+  quotation_number: string;
 }
 
 const EMPTY_PAGINATION: PaginationMeta = {
@@ -303,6 +310,10 @@ export default function QuotationsPage() {
     useState<Quotation | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
 
+  // State approval harus berada di dalam komponen React.
+  const [selectedApprovalQuotation, setSelectedApprovalQuotation] =
+    useState<ApprovalQuotation | null>(null);
+
   const [notice, setNotice] = useState<{
     type: "success" | "error";
     message: string;
@@ -318,8 +329,7 @@ export default function QuotationsPage() {
 
       const filters: QuotationFilters = {
         search: appliedSearch || undefined,
-        status:
-          statusFilter === "all" ? undefined : statusFilter,
+        status: statusFilter === "all" ? undefined : statusFilter,
         page,
         per_page: 10,
       };
@@ -381,13 +391,13 @@ export default function QuotationsPage() {
     }
   }, []);
 
-useEffect(() => {
-  const timeoutId = window.setTimeout(() => {
-    void loadMasterData();
-  }, 200);
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadMasterData();
+    }, 200);
 
-  return () => window.clearTimeout(timeoutId);
-}, [loadMasterData]);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadMasterData]);
 
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -419,10 +429,7 @@ useEffect(() => {
       ...previous,
       items: previous.items.map((item, itemIndex) =>
         itemIndex === index
-          ? {
-              ...item,
-              [key]: value,
-            }
+          ? { ...item, [key]: value }
           : item,
       ),
     }));
@@ -492,10 +499,7 @@ useEffect(() => {
       ...previous,
       terms: previous.terms.map((term, termIndex) =>
         termIndex === index
-          ? {
-              ...term,
-              [key]: value,
-            }
+          ? { ...term, [key]: value }
           : term,
       ),
     }));
@@ -589,9 +593,13 @@ useEffect(() => {
         !item.service_id ||
         !item.description.trim() ||
         !item.unit.trim() ||
+        !Number.isFinite(Number(item.quantity)) ||
         Number(item.quantity) <= 0 ||
+        !Number.isFinite(Number(item.unit_price)) ||
         Number(item.unit_price) < 0 ||
+        !Number.isFinite(Number(item.discount_amount)) ||
         Number(item.discount_amount) < 0 ||
+        !Number.isFinite(Number(item.tax_percentage)) ||
         Number(item.tax_percentage) < 0 ||
         Number(item.tax_percentage) > 100,
     );
@@ -694,6 +702,46 @@ useEffect(() => {
     } finally {
       setIsDetailLoading(false);
     }
+  };
+
+  // Membuka dialog hanya untuk quotation berstatus Draft.
+  const openApprovalDialog = (quotation: Quotation) => {
+    if (quotation.status !== "draft") {
+      setNotice({
+        type: "error",
+        message: "Hanya quotation berstatus Draft yang dapat diajukan untuk approval.",
+      });
+      return;
+    }
+
+    setSelectedApprovalQuotation({
+      id: quotation.id,
+      quotation_number: quotation.quotation_number,
+    });
+  };
+
+  // Dipanggil setelah pengajuan approval berhasil.
+  const handleApprovalSubmitted = () => {
+    const submittedQuotation = selectedApprovalQuotation;
+
+    setSelectedApprovalQuotation(null);
+    setSelectedQuotation((current) => {
+    if (!current || current.id !== submittedQuotation?.id) {
+        return current;
+    }
+
+    return {
+        ...current,
+        status: "pending_approval",
+    };
+    });
+
+    setNotice({
+      type: "success",
+      message: "Quotation berhasil diajukan untuk approval.",
+    });
+
+    void loadQuotations(false);
   };
 
   const totals = calculateQuotationTotals(formData.items);
@@ -997,14 +1045,25 @@ useEffect(() => {
                         </button>
 
                         {quotation.status === "draft" && (
-                          <button
-                            type="button"
-                            title="Edit quotation"
-                            onClick={() => void openEditForm(quotation)}
-                            className="rounded-lg p-2 text-muted-foreground transition hover:bg-secondary hover:text-primary"
-                          >
-                            <Pencil size={16} />
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              title="Ajukan untuk approval"
+                              onClick={() => openApprovalDialog(quotation)}
+                              className="rounded-lg p-2 text-muted-foreground transition hover:bg-secondary hover:text-primary"
+                            >
+                              <Send size={16} />
+                            </button>
+
+                            <button
+                              type="button"
+                              title="Edit quotation"
+                              onClick={() => void openEditForm(quotation)}
+                              className="rounded-lg p-2 text-muted-foreground transition hover:bg-secondary hover:text-primary"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -1124,10 +1183,7 @@ useEffect(() => {
                       >
                         <option value="">Pilih customer</option>
                         {customers.map((customer) => (
-                          <option
-                            key={customer.id}
-                            value={customer.id}
-                          >
+                          <option key={customer.id} value={customer.id}>
                             {customer.customer_code} - {customer.company_name}
                           </option>
                         ))}
@@ -1258,10 +1314,7 @@ useEffect(() => {
                             >
                               <option value="">Pilih service</option>
                               {services.map((service) => (
-                                <option
-                                  key={service.id}
-                                  value={service.id}
-                                >
+                                <option key={service.id} value={service.id}>
                                   {service.service_code} - {service.name}
                                 </option>
                               ))}
@@ -1922,20 +1975,33 @@ useEffect(() => {
 
                 <div className="flex flex-wrap justify-end gap-2">
                   {selectedQuotation.status === "draft" && (
-                    <button
-                      type="button"
-                      onClick={() => void openEditForm(selectedQuotation)}
-                      className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold text-foreground transition hover:bg-secondary"
-                    >
-                      <Pencil size={15} />
-                      Edit Quotation
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openApprovalDialog(selectedQuotation)
+                        }
+                        className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary-hover"
+                      >
+                        <Send size={15} />
+                        Submit for Approval
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => void openEditForm(selectedQuotation)}
+                        className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold text-foreground transition hover:bg-secondary"
+                      >
+                        <Pencil size={15} />
+                        Edit Quotation
+                      </button>
+                    </>
                   )}
 
                   <button
                     type="button"
                     onClick={() => setSelectedQuotation(null)}
-                    className="h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary-hover"
+                    className="h-9 rounded-lg bg-secondary px-4 text-sm font-semibold text-foreground transition hover:bg-secondary-hover"
                   >
                     Tutup
                   </button>
@@ -1944,6 +2010,16 @@ useEffect(() => {
             )}
           </div>
         </div>
+      )}
+
+      {/* Submit Approval Dialog */}
+      {selectedApprovalQuotation && (
+        <SubmitApprovalDialog
+          quotationId={selectedApprovalQuotation.id}
+          quotationNumber={selectedApprovalQuotation.quotation_number}
+          onClose={() => setSelectedApprovalQuotation(null)}
+          onSubmitted={handleApprovalSubmitted}
+        />
       )}
 
       {/* Notification */}

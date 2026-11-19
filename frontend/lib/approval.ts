@@ -20,6 +20,13 @@ export interface ApprovalQueueResult {
   meta: PaginationMeta;
 }
 
+export interface Approver {
+  id: number;
+  name: string;
+  email: string;
+  role_name: string;
+}
+
 async function approvalRequest<T>(
   endpoint: string,
   options: RequestInit = {},
@@ -102,4 +109,23 @@ export const approvalService = {
       },
     );
   },
+    async getApprovers(): Promise<Approver[]> {
+    const response = await approvalRequest<ApiResponse<Approver[]>>(
+        "/approvers",
+    );
+
+    return response.data;
+    },
+
+    async submit(id: number, approverId: number): Promise<void> {
+    await approvalRequest<ApiResponse<unknown>>(
+        `/quotations/${id}/submit`,
+        {
+        method: "POST",
+        body: JSON.stringify({
+            approver_id: approverId,
+        }),
+        },
+    );
+    },
 };

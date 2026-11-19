@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\PaymentVerificationController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\ReceiptController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\ApproverController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -111,6 +112,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/receipts', [ReceiptController::class, 'index']);
         Route::get('/receipts/{id}', [ReceiptController::class, 'show']);
 
+        // Approver Management
+        Route::get('/approvers', [ApproverController::class, 'index']);
 
         /*
         |--------------------------------------------------------------------------
