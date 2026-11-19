@@ -24,7 +24,19 @@
 ## 📸 Tampilan Aplikasi
 
 <p align="center">
-  <img src="docs/images/dashboard.png" alt="Dashboard Payment Management System" width="100%" />
+  <img src="docs/images/landingpage.png" alt="Landing Page" width="100%" />
+  <br />
+  <em>Landing Page</em>
+</p>
+<br />
+<p align="center">
+  <img src="docs/images/loginpage.png" alt="Login" width="100%" />
+  <br />
+  <em>Login Page</em>
+</p>
+<br />
+<p align="center">
+  <img src="docs/images/dashboardpage.png" alt="Dashboard Payment Management System" width="100%" />
   <br />
   <em>Dashboard Payment Management System</em>
 </p>
@@ -141,7 +153,6 @@ Teknologi yang digunakan dalam pengembangan aplikasi:
 <p>
   <img src="https://img.shields.io/badge/PHP-777BB4?style=for-the-badge&logo=php&logoColor=white" />
   <img src="https://img.shields.io/badge/Laravel-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" />
-  <img src="https://img.shields.io/badge/Laravel_Sanctum-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" />
 </p>
 
 ### 🗄️ Database
@@ -157,7 +168,6 @@ Teknologi yang digunakan dalam pengembangan aplikasi:
   <img src="https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white" />
   <img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white" />
   <img src="https://img.shields.io/badge/Postman-FF6C37?style=for-the-badge&logo=postman&logoColor=white" />
-  <img src="https://img.shields.io/badge/DBeaver-382923?style=for-the-badge&logo=dbeaver&logoColor=white" />
   <img src="https://img.shields.io/badge/pgAdmin-326690?style=for-the-badge&logo=postgresql&logoColor=white" />
 </p>
 
