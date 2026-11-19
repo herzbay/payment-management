@@ -12,6 +12,14 @@ use App\Http\Controllers\Api\ReceiptController;
 use App\Http\Controllers\Api\AccountReceivableController;
 use App\Http\Controllers\Api\CollectionActivityController;
 use App\Http\Controllers\Api\AdjustmentController;
+use App\Http\Controllers\Api\BankAccountController;
+use App\Http\Controllers\Api\BankStatementController;
+use App\Http\Controllers\Api\BankReconciliationController;
+use App\Http\Controllers\Api\BankStatementFinalizationController;
+use App\Http\Controllers\Api\BankStatementCsvImportController;
+use App\Http\Controllers\Api\FinancialReportController;
+use App\Http\Controllers\Api\AuditTrailController;
+use App\Http\Controllers\Api\PaymentSettingController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', function () {
@@ -221,6 +229,118 @@ Route::middleware(
         AdjustmentController::class,
         'cancel',
     ]);
+});
+
+// Bank Account Management - Read Access
+Route::middleware(
+    'role:super-admin,finance-manager,finance-staff,auditor'
+)->group(function () {
+    Route::get('/bank-accounts', [
+        BankAccountController::class,
+        'index',
+    ]);
+
+    Route::get('/bank-accounts/{id}', [
+        BankAccountController::class,
+        'show',
+    ]);
+});
+
+// Bank Account Management - Write Access
+Route::middleware(
+    'role:super-admin,finance-manager,finance-staff'
+)->group(function () {
+    Route::post('/bank-accounts', [
+        BankAccountController::class,
+        'store',
+    ]);
+
+    Route::put('/bank-accounts/{id}', [
+        BankAccountController::class,
+        'update',
+    ]);
+
+    Route::patch('/bank-accounts/{id}/status', [
+        BankAccountController::class,
+        'updateStatus',
+    ]);
+
+    Route::patch('/bank-accounts/{id}/default', [
+        BankAccountController::class,
+        'setDefault',
+    ]);
+});
+
+// ==========================================
+// BANK STATEMENT MANAGEMENT
+// ==========================================
+
+// Read access: Super Admin, Finance Manager,
+// Finance Staff, and Auditor.
+Route::middleware(
+    'role:super-admin,finance-manager,finance-staff,auditor'
+)->group(function () {
+    Route::get('/bank-statements', [
+        BankStatementController::class,
+        'index',
+    ]);
+
+    Route::get('/bank-statements/{id}', [
+        BankStatementController::class,
+        'show',
+    ]);
+});
+
+// Write access: Super Admin, Finance Manager,
+// and Finance Staff. Auditor is excluded.
+Route::middleware(
+    'role:super-admin,finance-manager,finance-staff'
+)->group(function () {
+    Route::post('/bank-statements', [
+        BankStatementController::class,
+        'store',
+    ]);
+
+    Route::post('/bank-statements/{id}/import', [
+        BankStatementController::class,
+        'import',
+    ]);
+});
+
+// ==========================================
+// BANK RECONCILIATION
+// ==========================================
+
+// Read access: Super Admin, Finance Manager,
+// Finance Staff, and Auditor.
+Route::middleware(
+    'role:super-admin,finance-manager,finance-staff,auditor'
+)->group(function () {
+    Route::get(
+        '/bank-statements/{statementId}/unmatched-lines',
+        [BankReconciliationController::class, 'unmatchedLines']
+    );
+
+    Route::get(
+        '/bank-statement-lines/{lineId}/candidates',
+        [BankReconciliationController::class, 'candidates']
+    );
+});
+
+// Write access: Super Admin, Finance Manager,
+// and Finance Staff.
+Route::middleware(
+    'role:super-admin,finance-manager,finance-staff'
+)->group(function () {
+    Route::post(
+        '/bank-statement-lines/{lineId}/match',
+        [BankReconciliationController::class, 'match']
+    );
+
+    Route::post(
+        '/bank-statement-lines/{lineId}/unmatch',
+        [BankReconciliationController::class, 'unmatch']
+    );
 });
     });
 });
